@@ -1134,25 +1134,71 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
         const fromRect = fromEl.getBoundingClientRect();
         const toRect = toEl.getBoundingClientRect();
 
-        const x1 = fromRect.left - canvasRect.left + fromRect.width / 2;
-        const y1 = fromRect.bottom - canvasRect.top;
-        const x2 = toRect.left - canvasRect.left + toRect.width / 2;
-        const y2 = toRect.top - canvasRect.top;
-        const midY = (y1 + y2) / 2;
+        const x1_c = fromRect.left - canvasRect.left + fromRect.width / 2;
+        const y1_c = fromRect.top - canvasRect.top + fromRect.height / 2;
+        const x2_c = toRect.left - canvasRect.left + toRect.width / 2;
+        const y2_c = toRect.top - canvasRect.top + toRect.height / 2;
+
+        let sx, sy, ex, ey, dPath, tx, ty;
+
+        // Caso 1: Destino está significativamente a la derecha
+        if (toRect.left > fromRect.right - 20) {
+          sx = fromRect.right - canvasRect.left + 2;
+          sy = y1_c;
+          ex = toRect.left - canvasRect.left - 8;
+          ey = y2_c;
+          const midX = (sx + ex) / 2;
+          dPath = `M ${sx} ${sy} C ${midX} ${sy}, ${midX} ${ey}, ${ex} ${ey}`;
+          tx = midX + 6;
+          ty = (sy + ey) / 2;
+        }
+        // Caso 2: Destino está significativamente a la izquierda
+        else if (toRect.right < fromRect.left + 20) {
+          sx = fromRect.left - canvasRect.left - 2;
+          sy = y1_c;
+          ex = toRect.right - canvasRect.left + 8;
+          ey = y2_c;
+          const midX = (sx + ex) / 2;
+          dPath = `M ${sx} ${sy} C ${midX} ${sy}, ${midX} ${ey}, ${ex} ${ey}`;
+          tx = midX + 6;
+          ty = (sy + ey) / 2;
+        }
+        // Caso 3: Destino está abajo
+        else if (toRect.top > fromRect.bottom - 20) {
+          sx = x1_c;
+          sy = fromRect.bottom - canvasRect.top + 2;
+          ex = x2_c;
+          ey = toRect.top - canvasRect.top - 8;
+          const midY = (sy + ey) / 2;
+          dPath = `M ${sx} ${sy} C ${sx} ${midY}, ${ex} ${midY}, ${ex} ${ey}`;
+          tx = (sx + ex) / 2 + 6;
+          ty = midY;
+        }
+        // Caso 4: Destino está arriba
+        else {
+          sx = x1_c;
+          sy = fromRect.top - canvasRect.top - 2;
+          ex = x2_c;
+          ey = toRect.bottom - canvasRect.top + 8;
+          const midY = (sy + ey) / 2;
+          dPath = `M ${sx} ${sy} C ${sx} ${midY}, ${ex} ${midY}, ${ex} ${ey}`;
+          tx = (sx + ex) / 2 + 6;
+          ty = midY;
+        }
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
+        path.setAttribute('d', dPath);
         svg.appendChild(path);
 
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.setAttribute('cx', x2);
-        circle.setAttribute('cy', y2);
+        circle.setAttribute('cx', ex);
+        circle.setAttribute('cy', ey);
         circle.setAttribute('r', 3);
         svg.appendChild(circle);
 
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', (x1 + x2) / 2 + 6);
-        text.setAttribute('y', midY);
+        text.setAttribute('x', tx);
+        text.setAttribute('y', ty);
         text.textContent = rel.cardinalidad || '';
         svg.appendChild(text);
       });
