@@ -195,26 +195,25 @@ body {
   border-color: var(--rl-accent-border);
 }
 
-/* ── Setup / Onboarding (Con transiciones fluidas de entrada) ───────── */
 .setup-screen {
   position: fixed;
   inset: 0;
   background: #020203;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: flex-start;
   z-index: 100;
-  padding: 24px;
+  padding: 40px 24px;
+  overflow-y: auto;
 }
 
 .setup-container {
   width: 100%;
   max-width: 580px;
-  max-height: 92vh;
-  overflow-y: auto;
   position: relative;
   z-index: 1;
-  padding: 8px;
+  padding: 8px 0;
+  margin: auto 0;
 }
 
 .setup-step.hidden {
