@@ -1224,20 +1224,43 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
         const fromRect = fromEl.getBoundingClientRect();
         const toRect = toEl.getBoundingClientRect();
 
-        const x1 = fromRect.left - canvasRect.left + fromRect.width / 2;
-        const y1 = fromRect.top - canvasRect.top + fromRect.height / 2;
-        const x2 = toRect.left - canvasRect.left + toRect.width / 2;
-        const y2 = toRect.top - canvasRect.top + toRect.height / 2;
+        const x1_c = fromRect.left - canvasRect.left + fromRect.width / 2;
+        const y1_c = fromRect.top - canvasRect.top + fromRect.height / 2;
+        const x2_c = toRect.left - canvasRect.left + toRect.width / 2;
+        const y2_c = toRect.top - canvasRect.top + toRect.height / 2;
 
-        // Acorta la línea para que la punta de flecha no quede oculta bajo la tarjeta destino
-        const dx = x2 - x1, dy = y2 - y1;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const shrink = 105; // aprox. mitad del ancho de tarjeta + margen
-        const ex = x2 - (dx / dist) * shrink;
-        const ey = y2 - (dy / dist) * shrink;
+        let sx, sy, ex, ey;
+
+        // Si la tarjeta destino está significativamente a la derecha
+        if (toRect.left > fromRect.right - 15) {
+          sx = fromRect.right - canvasRect.left + 2;
+          sy = y1_c;
+          ex = toRect.left - canvasRect.left - 8;
+          ey = y2_c;
+        } 
+        // Si la tarjeta destino está significativamente a la izquierda
+        else if (toRect.right < fromRect.left + 15) {
+          sx = fromRect.left - canvasRect.left - 2;
+          sy = y1_c;
+          ex = toRect.right - canvasRect.left + 8;
+          ey = y2_c;
+        } 
+        // Si están alineados horizontalmente pero uno arriba y otro abajo
+        else if (toRect.top > fromRect.bottom - 15) {
+          sx = x1_c;
+          sy = fromRect.bottom - canvasRect.top + 2;
+          ex = x2_c;
+          ey = toRect.top - canvasRect.top - 8;
+        } 
+        else {
+          sx = x1_c;
+          sy = fromRect.top - canvasRect.top - 2;
+          ex = x2_c;
+          ey = toRect.bottom - canvasRect.top + 8;
+        }
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', `M ${x1} ${y1} L ${ex} ${ey}`);
+        path.setAttribute('d', `M ${sx} ${sy} L ${ex} ${ey}`);
         path.setAttribute('marker-end', 'url(#modArrow)');
         svg.appendChild(path);
       });

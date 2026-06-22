@@ -1384,9 +1384,8 @@ body {
 
 .er-connections path {
   fill: none;
-  stroke: var(--rl-accent-border);
+  stroke: rgba(59, 130, 246, 0.45);
   stroke-width: 1.5;
-  opacity: 0.5;
 }
 
 .er-connections text {
@@ -1397,7 +1396,7 @@ body {
 
 .er-connections circle {
   fill: var(--rl-bg);
-  stroke: var(--rl-accent);
+  stroke: rgba(59, 130, 246, 0.75);
   stroke-width: 1.5;
 }
 
@@ -1512,12 +1511,12 @@ body {
 
 .mod-connections path {
   fill: none;
-  stroke: var(--rl-border-strong);
+  stroke: rgba(6, 182, 212, 0.45);
   stroke-width: 1.5;
 }
 
 .mod-connections .mod-arrowhead {
-  fill: var(--rl-border-strong);
+  fill: rgba(6, 182, 212, 0.75);
 }
 
 .mod-empty-note {
