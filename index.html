@@ -1274,6 +1274,8 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
       if (!svg || !canvas) return;
       const canvasRect = canvas.getBoundingClientRect();
       svg.innerHTML = '';
+      svg.setAttribute('width', canvas.scrollWidth);
+      svg.setAttribute('height', canvas.scrollHeight);
 
       const nameToIndex = {};
       entidades.forEach((e, i) => { nameToIndex[e.nombre] = i; });
@@ -1405,6 +1407,8 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
         <path class="mod-arrowhead" d="M0,0 L6,3 L0,6 Z"></path>
       </marker>
     </defs>`;
+      svg.setAttribute('width', canvas.scrollWidth);
+      svg.setAttribute('height', canvas.scrollHeight);
 
       const nameToIndex = {};
       modulos.forEach((m, i) => { nameToIndex[m.nombre] = i; });
