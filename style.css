@@ -1247,6 +1247,7 @@ body {
   transition: var(--rl-transition);
   opacity: 0;
   animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform: translate(var(--drag-x, 0px), var(--drag-y, 0px));
 }
 
 .er-entity:nth-child(1) {
@@ -1275,7 +1276,7 @@ body {
 
 .er-entity:hover {
   border-color: rgba(59, 130, 246, 0.35);
-  transform: translateY(-3px) scale(1.008);
+  transform: translate(var(--drag-x, 0px), calc(var(--drag-y, 0px) - 3px)) scale(1.008);
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.1);
 }
 
@@ -1435,6 +1436,7 @@ body {
   transition: var(--rl-transition);
   opacity: 0;
   animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform: translate(var(--drag-x, 0px), var(--drag-y, 0px));
 }
 
 .mod-block:nth-child(1) {
@@ -1459,7 +1461,7 @@ body {
 
 .mod-block:hover {
   border-color: var(--rl-scan);
-  transform: translateY(-3px) scale(1.008);
+  transform: translate(var(--drag-x, 0px), calc(var(--drag-y, 0px) - 3px)) scale(1.008);
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4), 0 0 15px rgba(6, 182, 212, 0.1);
 }
 
@@ -1844,4 +1846,54 @@ body {
   .results-panel {
     display: none;
   }
+}
+
+/* Drag and Reset Layout Utility Styles */
+.er-entity-header {
+  cursor: grab;
+}
+
+.mod-block {
+  cursor: grab;
+}
+
+.er-entity.is-dragging,
+.mod-block.is-dragging {
+  transition: none !important;
+  cursor: grabbing !important;
+  z-index: 100 !important;
+}
+
+.diagram-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.btn-reset-layout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--rl-radius-sm);
+  color: var(--rl-text-secondary);
+  font-family: var(--rl-font-display);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: var(--rl-transition);
+}
+
+.btn-reset-layout:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--rl-text);
+  transform: translateY(-1px);
+}
+
+.btn-reset-layout i {
+  width: 12px;
+  height: 12px;
 }

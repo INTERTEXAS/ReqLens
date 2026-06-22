@@ -759,6 +759,8 @@
     // análisis completo → render de requerimientos + módulos + entidades
     // ════════════════════════════════════════════════════════════════════════
 
+    let erDragOffsets = {};
+    let modDragOffsets = {};
     let analysisResult = null; // guarda el resultado completo para exportar después
 
     // Etiquetas cerradas — Claude solo puede usar estas 3, nunca inventa otras
@@ -1083,7 +1085,15 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
         return;
       }
 
-      let html = '<div class="er-diagram-wrap"><div class="er-canvas" id="erCanvas">';
+      let html = `
+      <div class="er-diagram-wrap">
+        <div class="diagram-actions">
+          <button class="btn-reset-layout" onclick="resetERLayout()">
+            <i data-lucide="refresh-cw"></i> Restablecer Diseño
+          </button>
+        </div>
+        <div class="er-canvas" id="erCanvas">`;
+
       entidades.forEach((e, i) => {
         const safeId = `er-ent-${i}`;
         const isSecondary = e.tipo === 'relacion';
@@ -1106,6 +1116,17 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
       html += '<svg class="er-connections" id="erConnections"></svg>';
       html += '</div></div>';
       surface.innerHTML = html;
+      try { lucide.createIcons(); } catch (e) { }
+
+      entidades.forEach((e, i) => {
+        const cardEl = document.getElementById(`er-ent-${i}`);
+        if (cardEl) {
+          const offset = erDragOffsets[e.nombre] || { x: 0, y: 0 };
+          cardEl.style.setProperty('--drag-x', `${offset.x}px`);
+          cardEl.style.setProperty('--drag-y', `${offset.y}px`);
+          setupDraggableCard(cardEl, e.nombre, 'er');
+        }
+      });
 
       // Espera al siguiente frame para que el layout ya tenga posiciones reales
       // antes de calcular las coordenadas de las líneas conectoras.
@@ -1182,6 +1203,74 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
         dirA: bestA.dir,
         dirB: bestB.dir
       };
+    }
+
+    function setupDraggableCard(cardEl, name, type) {
+      const handleEl = type === 'er' ? cardEl.querySelector('.er-entity-header') : cardEl;
+      if (!handleEl) return;
+
+      let isDragging = false;
+      let startX = 0;
+      let startY = 0;
+      let initX = 0;
+      let initY = 0;
+
+      const offsets = type === 'er' ? erDragOffsets : modDragOffsets;
+
+      handleEl.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+
+        const currentOffset = offsets[name] || { x: 0, y: 0 };
+        initX = currentOffset.x;
+        initY = currentOffset.y;
+
+        cardEl.classList.add('is-dragging');
+        handleEl.setPointerCapture(e.pointerId);
+      });
+
+      handleEl.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        const offsetX = initX + dx;
+        const offsetY = initY + dy;
+
+        offsets[name] = { x: offsetX, y: offsetY };
+
+        cardEl.style.setProperty('--drag-x', `${offsetX}px`);
+        cardEl.style.setProperty('--drag-y', `${offsetY}px`);
+
+        if (type === 'er') {
+          drawERConnections(analysisResult.entidades || [], analysisResult.relacionesEntidades || []);
+        } else {
+          drawModuleConnections(analysisResult.modulos || [], analysisResult.relacionesModulos || []);
+        }
+      });
+
+      const stopDrag = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        cardEl.classList.remove('is-dragging');
+        try { handleEl.releasePointerCapture(e.pointerId); } catch (err) {}
+      };
+
+      handleEl.addEventListener('pointerup', stopDrag);
+      handleEl.addEventListener('pointercancel', stopDrag);
+    }
+
+    function resetERLayout() {
+      erDragOffsets = {};
+      renderERDiagram();
+    }
+
+    function resetModLayout() {
+      modDragOffsets = {};
+      renderModuleDiagram();
     }
 
     function drawERConnections(entidades, relaciones) {
@@ -1271,7 +1360,15 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
         return;
       }
 
-      let html = '<div class="mod-diagram-wrap"><div class="mod-canvas" id="modCanvas">';
+      let html = `
+      <div class="mod-diagram-wrap">
+        <div class="diagram-actions">
+          <button class="btn-reset-layout" onclick="resetModLayout()">
+            <i data-lucide="refresh-cw"></i> Restablecer Diseño
+          </button>
+        </div>
+        <div class="mod-canvas" id="modCanvas">`;
+
       modulos.forEach((m, i) => {
         const icon = MODULE_ICONS[i % MODULE_ICONS.length];
         html += `
@@ -1285,6 +1382,16 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
       html += '</div></div>';
       surface.innerHTML = html;
       try { lucide.createIcons(); } catch (e) { }
+
+      modulos.forEach((m, i) => {
+        const cardEl = document.getElementById(`mod-blk-${i}`);
+        if (cardEl) {
+          const offset = modDragOffsets[m.nombre] || { x: 0, y: 0 };
+          cardEl.style.setProperty('--drag-x', `${offset.x}px`);
+          cardEl.style.setProperty('--drag-y', `${offset.y}px`);
+          setupDraggableCard(cardEl, m.nombre, 'mod');
+        }
+      });
 
       requestAnimationFrame(() => requestAnimationFrame(() => drawModuleConnections(modulos, relaciones)));
       setTimeout(() => {
