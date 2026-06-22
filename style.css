@@ -1217,19 +1217,21 @@ body {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(200px, 1fr));
-  gap: 56px 48px;
+  gap: 72px 64px;
   align-items: start;
 }
 
 @media (max-width: 1400px) {
-  .er-canvas {
+  .er-canvas, .mod-canvas {
     grid-template-columns: repeat(2, minmax(200px, 1fr));
+    gap: 60px 48px;
   }
 }
 
 @media (max-width: 1100px) {
-  .er-canvas {
+  .er-canvas, .mod-canvas {
     grid-template-columns: 1fr;
+    gap: 48px;
   }
 }
 
@@ -1379,7 +1381,7 @@ body {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 1;
+  z-index: 3;
 }
 
 .er-connections path {
@@ -1414,11 +1416,10 @@ body {
 
 .mod-canvas {
   position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 56px 64px;
-  align-items: flex-start;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 72px 64px;
+  align-items: start;
 }
 
 .mod-block {
@@ -1506,7 +1507,7 @@ body {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 1;
+  z-index: 3;
 }
 
 .mod-connections path {

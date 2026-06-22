@@ -923,7 +923,7 @@ ${TAG_INSTRUCTIONS}
 
 ${ETHICS_INSTRUCTION}
 
-Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 3 a 5 módulos, y 2 a 4 entidades conceptuales. Sé conciso en cada descripción (máximo 20 palabras por requerimiento). El documento y todos los textos deben estar en español, sin importar el idioma de la interfaz analizada.`;
+Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 3 a 5 módulos, y 2 a 4 entidades conceptuales. Sé conciso en cada descripción (máximo 20 palabras por requerimiento). El documento y todos los textos deben estar en español, sin importar el idioma de la interfaz analizada. Si generas una entidad de tipo "relacion" (tabla de unión N:M, ej. "PledgeArticulo"), debes incluir en "relacionesEntidades" las conexiones que la vinculan con sus entidades principales (ej: de "Pledge" a "PledgeArticulo" como "1:N" y de "Articulo" a "PledgeArticulo" como "1:N").`;
 
       userContent.push({ type: 'text', text: instructions });
       state.images.forEach(img => {
@@ -1110,6 +1110,78 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
       // Espera al siguiente frame para que el layout ya tenga posiciones reales
       // antes de calcular las coordenadas de las líneas conectoras.
       requestAnimationFrame(() => requestAnimationFrame(() => drawERConnections(entidades, relaciones)));
+      setTimeout(() => {
+        if (currentSurfaceView === 'er') drawERConnections(entidades, relaciones);
+      }, 600);
+    }
+
+    function getBestConnectionPorts(fromRect, toRect, canvasRect, startOffset = 2, endOffset = 2) {
+      const x1_c = fromRect.left - canvasRect.left + fromRect.width / 2;
+      const y1_c = fromRect.top - canvasRect.top + fromRect.height / 2;
+      const x2_c = toRect.left - canvasRect.left + toRect.width / 2;
+      const y2_c = toRect.top - canvasRect.top + toRect.height / 2;
+
+      const portsA = [
+        { x: fromRect.left - canvasRect.left, y: y1_c, nx: -1, ny: 0, dir: 'L' },
+        { x: fromRect.right - canvasRect.left, y: y1_c, nx: 1, ny: 0, dir: 'R' },
+        { x: x1_c, y: fromRect.top - canvasRect.top, nx: 0, ny: -1, dir: 'T' },
+        { x: x1_c, y: fromRect.bottom - canvasRect.top, nx: 0, ny: 1, dir: 'B' }
+      ];
+
+      const portsB = [
+        { x: toRect.left - canvasRect.left, y: y2_c, nx: -1, ny: 0, dir: 'L' },
+        { x: toRect.right - canvasRect.left, y: y2_c, nx: 1, ny: 0, dir: 'R' },
+        { x: x2_c, y: toRect.top - canvasRect.top, nx: 0, ny: -1, dir: 'T' },
+        { x: x2_c, y: toRect.bottom - canvasRect.top, nx: 0, ny: 1, dir: 'B' }
+      ];
+
+      let minD = Infinity;
+      let bestA = null;
+      let bestB = null;
+
+      for (const pA of portsA) {
+        for (const pB of portsB) {
+          const dx = pB.x - pA.x;
+          const dy = pB.y - pA.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          const dotA = pA.nx * dx + pA.ny * dy;
+          const dotB = pB.nx * dx + pB.ny * dy;
+
+          if (dotA >= 0 && dotB <= 0) {
+            if (dist < minD) {
+              minD = dist;
+              bestA = pA;
+              bestB = pB;
+            }
+          }
+        }
+      }
+
+      if (!bestA || !bestB) {
+        minD = Infinity;
+        for (const pA of portsA) {
+          for (const pB of portsB) {
+            const dx = pB.x - pA.x;
+            const dy = pB.y - pA.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minD) {
+              minD = dist;
+              bestA = pA;
+              bestB = pB;
+            }
+          }
+        }
+      }
+
+      return {
+        sx: bestA.x + bestA.nx * startOffset,
+        sy: bestA.y + bestA.ny * startOffset,
+        ex: bestB.x + bestB.nx * endOffset,
+        ey: bestB.y + bestB.ny * endOffset,
+        dirA: bestA.dir,
+        dirB: bestB.dir
+      };
     }
 
     function drawERConnections(entidades, relaciones) {
@@ -1134,56 +1206,27 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
         const fromRect = fromEl.getBoundingClientRect();
         const toRect = toEl.getBoundingClientRect();
 
-        const x1_c = fromRect.left - canvasRect.left + fromRect.width / 2;
-        const y1_c = fromRect.top - canvasRect.top + fromRect.height / 2;
-        const x2_c = toRect.left - canvasRect.left + toRect.width / 2;
-        const y2_c = toRect.top - canvasRect.top + toRect.height / 2;
+        const conn = getBestConnectionPorts(fromRect, toRect, canvasRect, 2, 3);
+        const { sx, sy, ex, ey, dirA, dirB } = conn;
 
-        let sx, sy, ex, ey, dPath, tx, ty;
+        let dPath, tx, ty;
 
-        // Caso 1: Destino está significativamente a la derecha
-        if (toRect.left > fromRect.right - 20) {
-          sx = fromRect.right - canvasRect.left + 2;
-          sy = y1_c;
-          ex = toRect.left - canvasRect.left - 8;
-          ey = y2_c;
+        if ((dirA === 'L' || dirA === 'R') && (dirB === 'L' || dirB === 'R')) {
           const midX = (sx + ex) / 2;
           dPath = `M ${sx} ${sy} C ${midX} ${sy}, ${midX} ${ey}, ${ex} ${ey}`;
-          tx = midX + 6;
-          ty = (sy + ey) / 2;
-        }
-        // Caso 2: Destino está significativamente a la izquierda
-        else if (toRect.right < fromRect.left + 20) {
-          sx = fromRect.left - canvasRect.left - 2;
-          sy = y1_c;
-          ex = toRect.right - canvasRect.left + 8;
-          ey = y2_c;
-          const midX = (sx + ex) / 2;
-          dPath = `M ${sx} ${sy} C ${midX} ${sy}, ${midX} ${ey}, ${ex} ${ey}`;
-          tx = midX + 6;
-          ty = (sy + ey) / 2;
-        }
-        // Caso 3: Destino está abajo
-        else if (toRect.top > fromRect.bottom - 20) {
-          sx = x1_c;
-          sy = fromRect.bottom - canvasRect.top + 2;
-          ex = x2_c;
-          ey = toRect.top - canvasRect.top - 8;
+          tx = midX;
+          ty = (sy + ey) / 2 - 6;
+        } else if ((dirA === 'T' || dirA === 'B') && (dirB === 'T' || dirB === 'B')) {
           const midY = (sy + ey) / 2;
           dPath = `M ${sx} ${sy} C ${sx} ${midY}, ${ex} ${midY}, ${ex} ${ey}`;
-          tx = (sx + ex) / 2 + 6;
-          ty = midY;
-        }
-        // Caso 4: Destino está arriba
-        else {
-          sx = x1_c;
-          sy = fromRect.top - canvasRect.top - 2;
-          ex = x2_c;
-          ey = toRect.bottom - canvasRect.top + 8;
-          const midY = (sy + ey) / 2;
-          dPath = `M ${sx} ${sy} C ${sx} ${midY}, ${ex} ${midY}, ${ex} ${ey}`;
-          tx = (sx + ex) / 2 + 6;
-          ty = midY;
+          tx = (sx + ex) / 2 + 8;
+          ty = midY + 4;
+        } else {
+          const cp1x = (dirA === 'L' || dirA === 'R') ? ex : sx;
+          const cp1y = (dirA === 'L' || dirA === 'R') ? sy : ey;
+          dPath = `M ${sx} ${sy} C ${cp1x} ${cp1y}, ${cp1x} ${cp1y}, ${ex} ${ey}`;
+          tx = cp1x;
+          ty = cp1y + (dirA === 'L' || dirA === 'R' ? (ey > sy ? 12 : -12) : 0);
         }
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -1196,11 +1239,14 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
         circle.setAttribute('r', 3);
         svg.appendChild(circle);
 
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', tx);
-        text.setAttribute('y', ty);
-        text.textContent = rel.cardinalidad || '';
-        svg.appendChild(text);
+        if (rel.cardinalidad) {
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('x', tx);
+          text.setAttribute('y', ty);
+          text.setAttribute('text-anchor', 'middle');
+          text.textContent = rel.cardinalidad;
+          svg.appendChild(text);
+        }
       });
     }
 
@@ -1241,6 +1287,9 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
       try { lucide.createIcons(); } catch (e) { }
 
       requestAnimationFrame(() => requestAnimationFrame(() => drawModuleConnections(modulos, relaciones)));
+      setTimeout(() => {
+        if (currentSurfaceView === 'modulos') drawModuleConnections(modulos, relaciones);
+      }, 600);
     }
 
     function drawModuleConnections(modulos, relaciones) {
@@ -1270,43 +1319,25 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
         const fromRect = fromEl.getBoundingClientRect();
         const toRect = toEl.getBoundingClientRect();
 
-        const x1_c = fromRect.left - canvasRect.left + fromRect.width / 2;
-        const y1_c = fromRect.top - canvasRect.top + fromRect.height / 2;
-        const x2_c = toRect.left - canvasRect.left + toRect.width / 2;
-        const y2_c = toRect.top - canvasRect.top + toRect.height / 2;
+        const conn = getBestConnectionPorts(fromRect, toRect, canvasRect, 2, 2);
+        const { sx, sy, ex, ey, dirA, dirB } = conn;
 
-        let sx, sy, ex, ey;
+        let dPath;
 
-        // Si la tarjeta destino está significativamente a la derecha
-        if (toRect.left > fromRect.right - 15) {
-          sx = fromRect.right - canvasRect.left + 2;
-          sy = y1_c;
-          ex = toRect.left - canvasRect.left - 8;
-          ey = y2_c;
-        } 
-        // Si la tarjeta destino está significativamente a la izquierda
-        else if (toRect.right < fromRect.left + 15) {
-          sx = fromRect.left - canvasRect.left - 2;
-          sy = y1_c;
-          ex = toRect.right - canvasRect.left + 8;
-          ey = y2_c;
-        } 
-        // Si están alineados horizontalmente pero uno arriba y otro abajo
-        else if (toRect.top > fromRect.bottom - 15) {
-          sx = x1_c;
-          sy = fromRect.bottom - canvasRect.top + 2;
-          ex = x2_c;
-          ey = toRect.top - canvasRect.top - 8;
-        } 
-        else {
-          sx = x1_c;
-          sy = fromRect.top - canvasRect.top - 2;
-          ex = x2_c;
-          ey = toRect.bottom - canvasRect.top + 8;
+        if ((dirA === 'L' || dirA === 'R') && (dirB === 'L' || dirB === 'R')) {
+          const midX = (sx + ex) / 2;
+          dPath = `M ${sx} ${sy} C ${midX} ${sy}, ${midX} ${ey}, ${ex} ${ey}`;
+        } else if ((dirA === 'T' || dirA === 'B') && (dirB === 'T' || dirB === 'B')) {
+          const midY = (sy + ey) / 2;
+          dPath = `M ${sx} ${sy} C ${sx} ${midY}, ${ex} ${midY}, ${ex} ${ey}`;
+        } else {
+          const cp1x = (dirA === 'L' || dirA === 'R') ? ex : sx;
+          const cp1y = (dirA === 'L' || dirA === 'R') ? sy : ey;
+          dPath = `M ${sx} ${sy} C ${cp1x} ${cp1y}, ${cp1x} ${cp1y}, ${ex} ${ey}`;
         }
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', `M ${sx} ${sy} L ${ex} ${ey}`);
+        path.setAttribute('d', dPath);
         path.setAttribute('marker-end', 'url(#modArrow)');
         svg.appendChild(path);
       });
