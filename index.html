@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReqLens — Análisis de Requerimientos por Inspección Visual</title>
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%233b82c4'/><circle cx='42' cy='42' r='22' fill='none' stroke='%23000' stroke-width='8'/><line x1='58' y1='58' x2='78' y2='78' stroke='%23000' stroke-width='9' stroke-linecap='round'/></svg>" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="lens-grid-bg"></div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+     SETUP SCREEN — Onboarding ramificado
+     ════════════════════════════════════════════════════════════════════ -->
+  <div class="setup-screen" id="setupScreen">
+    <div class="setup-container">
+
+      <!-- PASO 0 — Bienvenida + Disclaimer -->
+      <div class="setup-step" id="step-0">
+        <div class="setup-header">
+          <div class="setup-icon"><i data-lucide="scan-search"></i></div>
+          <div class="setup-title">ReqLens</div>
+          <div class="setup-subtitle">Analiza cualquier interfaz existente y obtén los requerimientos formales que
+            necesitarías para construirla.</div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-label">Qué obtienes al terminar</div>
+          <div class="feature-grid">
+            <div class="feature-item">
+              <i data-lucide="file-text"></i>
+              <div class="feature-title">IEEE 830</div>
+              <div class="feature-desc">Documento formal con requerimientos funcionales y no funcionales</div>
+            </div>
+            <div class="feature-item">
+              <i data-lucide="git-branch"></i>
+              <div class="feature-title">Diagrama de módulos</div>
+              <div class="feature-desc">Estructura visual de cómo se relacionan las partes del sistema</div>
+            </div>
+            <div class="feature-item">
+              <i data-lucide="layout-grid"></i>
+              <div class="feature-title">Modelo conceptual</div>
+              <div class="feature-desc">Entidades y relaciones inferidas, sin diseño técnico de base de datos</div>
+            </div>
+            <div class="feature-item">
+              <i data-lucide="layers"></i>
+              <div class="feature-title">Niveles de confianza</div>
+              <div class="feature-desc">Cada dato marcado como confirmado, inferido o no accesible</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="disclaimer-box">
+          <div class="disclaimer-title"><i data-lucide="shield-alert"></i> Uso responsable</div>
+          <div class="disclaimer-list">
+            <div class="disclaimer-item"><i data-lucide="check"></i> ReqLens analiza interfaces visibles públicamente
+              con fines educativos y de aprendizaje.</div>
+            <div class="disclaimer-item"><i data-lucide="check"></i> No copia código, diseño visual ni contenido
+              protegido — solo infiere requerimientos funcionales genéricos.</div>
+            <div class="disclaimer-item"><i data-lucide="check"></i> No debe usarse para clonar o competir directamente
+              con el producto analizado.</div>
+            <div class="disclaimer-item"><i data-lucide="check"></i> Los resultados son sugerencias educativas, no
+              especificaciones verificadas.</div>
+          </div>
+        </div>
+
+        <button class="btn-next" style="width:100%" onclick="goStep('step-1')">
+          Entiendo y acepto <i data-lucide="arrow-right"></i>
+        </button>
+        <div class="progress-track" id="progressTrack"></div>
+      </div>
+
+      <!-- PASO 1 — API Key -->
+      <div class="setup-step hidden" id="step-1">
+        <div class="setup-header">
+          <div class="setup-icon"><i data-lucide="key-round"></i></div>
+          <div class="setup-title" style="font-size:21px">Conectar con Claude</div>
+          <div class="setup-subtitle">ReqLens necesita una API Key de Anthropic para analizar las capturas y generar el
+            documento.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Tu API Key de Anthropic</label>
+          <div class="field-input-wrap">
+            <input type="password" class="field-input" id="apiKeyInput" placeholder="sk-ant-api03-..."
+              oninput="checkStep1()">
+            <button class="field-toggle" onclick="toggleKey()"><i data-lucide="eye" id="eyeIcon"></i></button>
+          </div>
+          <p class="field-note">
+            Obtén tu key en <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+            &nbsp;·&nbsp; Se guarda solo en tu navegador, nunca en servidores externos
+          </p>
+        </div>
+
+        <div class="info-card" style="padding:14px; margin-bottom:18px">
+          <div
+            style="display:flex; align-items:center; gap:8px; font-family:var(--rl-font-display); font-size:12px; font-weight:700; margin-bottom:6px">
+            <i data-lucide="credit-card" style="width:14px;height:14px;color:var(--rl-accent)"></i> Costo estimado
+          </div>
+          <div style="font-size:11px; color:var(--rl-text-secondary); line-height:1.5">
+            Un análisis completo (capturas + IEEE 830 + diagramas) cuesta aproximadamente <strong
+              style="color:var(--rl-text)">$0.04 USD</strong>. Anthropic otorga $5 de crédito gratuito al registrarte.
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-back" onclick="goStep('step-0')">Atrás</button>
+          <button class="btn-next" id="btnStep1" onclick="goStep('step-2')" disabled>Continuar <i
+              data-lucide="arrow-right"></i></button>
+        </div>
+        <div class="progress-track" id="progressTrack-1"></div>
+      </div>
+
+      <!-- PASO 2 — Selección de modo (el punto de ramificación) -->
+      <div class="setup-step hidden" id="step-2">
+        <div class="setup-header">
+          <div class="setup-icon"><i data-lucide="sliders-horizontal"></i></div>
+          <div class="setup-title" style="font-size:21px">Elige tu modo de trabajo</div>
+          <div class="setup-subtitle">Cada modo ajusta cuánta guía recibes durante el análisis.</div>
+        </div>
+
+        <div class="mode-grid">
+          <div class="mode-card" id="mode-aprendizaje" onclick="selectMode('aprendizaje')">
+            <div class="mode-card-icon aprendizaje"><i data-lucide="graduation-cap"></i></div>
+            <div>
+              <div class="mode-card-title">Aprendizaje</div>
+              <div class="mode-card-desc">Te explicamos cada concepto y te guiamos paso a paso en qué capturar.
+                <strong>Ideal si es tu primera vez.</strong></div>
+            </div>
+          </div>
+          <div class="mode-card" id="mode-guiado" onclick="selectMode('guiado')">
+            <div class="mode-card-icon guiado"><i data-lucide="compass"></i></div>
+            <div>
+              <div class="mode-card-title">Guiado</div>
+              <div class="mode-card-desc">Ayudas puntuales solo donde importan, sin tutoriales completos. <strong>Para
+                  quien ya conoce el proceso.</strong></div>
+            </div>
+          </div>
+          <div class="mode-card" id="mode-profesional" onclick="selectMode('profesional')">
+            <div class="mode-card-icon profesional"><i data-lucide="zap"></i></div>
+            <div>
+              <div class="mode-card-title">Profesional</div>
+              <div class="mode-card-desc">Directo al análisis, sin explicaciones adicionales. <strong>Máxima
+                  velocidad.</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin-top:18px">
+          <button class="btn-back" onclick="goStep('step-1')">Atrás</button>
+          <button class="btn-next" id="btnStep2" onclick="proceedFromMode()" disabled>Continuar <i
+              data-lucide="arrow-right"></i></button>
+        </div>
+        <div class="progress-track" id="progressTrack-2"></div>
+      </div>
+
+      <!-- PASO 3A — Solo en modo Aprendizaje: explicación de SPA + guía de capturas -->
+      <div class="setup-step hidden" id="step-3a">
+        <div class="setup-header">
+          <div class="setup-icon"><i data-lucide="layout-template"></i></div>
+          <div class="setup-title" style="font-size:21px">Qué capturar y por qué</div>
+          <div class="setup-subtitle">Estas 5 pantallas cubren la mayoría de sistemas. No necesitas las 5 — sube las que
+            tengas disponibles.</div>
+        </div>
+
+        <div class="info-card" style="display:flex; flex-direction:column; gap:10px">
+          <div style="display:flex; gap:12px; align-items:flex-start">
+            <div class="mode-card-icon aprendizaje" style="flex-shrink:0"><i data-lucide="home"
+                style="width:16px;height:16px"></i></div>
+            <div>
+              <div class="feature-title">Pantalla principal</div>
+              <div class="feature-desc">Lo que ves al entrar después del login — resumen general del sistema.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start">
+            <div class="mode-card-icon aprendizaje" style="flex-shrink:0"><i data-lucide="list"
+                style="width:16px;height:16px"></i></div>
+            <div>
+              <div class="feature-title">Listado de datos</div>
+              <div class="feature-desc">Tablas, listas o tarjetas con información — ej. clientes, productos, pedidos.
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start">
+            <div class="mode-card-icon aprendizaje" style="flex-shrink:0"><i data-lucide="plus-square"
+                style="width:16px;height:16px"></i></div>
+            <div>
+              <div class="feature-title">Formulario de creación</div>
+              <div class="feature-desc">Donde se agrega algo nuevo al sistema.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start">
+            <div class="mode-card-icon aprendizaje" style="flex-shrink:0"><i data-lucide="search"
+                style="width:16px;height:16px"></i></div>
+            <div>
+              <div class="feature-title">Vista de detalle</div>
+              <div class="feature-desc">Al hacer clic en un elemento, la pantalla con toda su información.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start">
+            <div class="mode-card-icon aprendizaje" style="flex-shrink:0"><i data-lucide="settings"
+                style="width:16px;height:16px"></i></div>
+            <div>
+              <div class="feature-title">Configuración o perfil</div>
+              <div class="feature-desc">Ajustes del sistema o datos del usuario.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-back" onclick="goStep('step-2')">Atrás</button>
+          <button class="btn-next" onclick="setupStep4ForMode(); goStep('step-4')">Entendido <i
+              data-lucide="arrow-right"></i></button>
+        </div>
+        <div class="progress-track" id="progressTrack-3"></div>
+      </div>
+
+      <!-- PASO 4 — Captura/Descripción + Dominio (compartido, contenido varía por JS según modo) -->
+      <div class="setup-step hidden" id="step-4">
+        <div class="setup-header">
+          <div class="setup-icon"><i data-lucide="upload"></i></div>
+          <div class="setup-title" style="font-size:21px" id="step4Title">Sube tus capturas</div>
+          <div class="setup-subtitle" id="step4Subtitle">Máximo 5 imágenes. Se redimensionan automáticamente, no
+            necesitas comprimirlas.</div>
+        </div>
+
+        <div class="upload-actions">
+          <button class="upload-action-btn" id="btnUploadFile" onclick="document.getElementById('fileInput').click()">
+            <i data-lucide="image-plus"></i>
+            <span>Subir imágenes</span>
+          </button>
+          <button class="upload-action-btn" id="btnCaptureScreen" onclick="captureScreen()">
+            <i data-lucide="monitor"></i>
+            <span>Capturar pantalla</span>
+          </button>
+          <input type="file" id="fileInput" accept="image/*" multiple style="display:none"
+            onchange="handleFileSelect(event)">
+        </div>
+
+        <div class="info-card drop-zone" id="dropZone"
+          style="text-align:center; padding:22px; border-style:dashed; cursor:pointer">
+          <i data-lucide="upload-cloud"
+            style="width:26px;height:26px;color:var(--rl-text-muted); margin-bottom:8px"></i>
+          <div style="font-size:11.5px; color:var(--rl-text-secondary)">O arrastra tus imágenes aquí</div>
+        </div>
+
+        <div class="image-grid" id="imageGrid"></div>
+        <p class="field-note" id="imageCountNote" style="text-align:center"></p>
+
+        <div class="field-group" style="margin-top:16px">
+          <label class="field-label">URL de referencia (opcional)</label>
+          <input class="field-input" id="urlRefInput" placeholder="https://ejemplo.com">
+          <p class="field-note" id="urlRefNote">ReqLens no puede leer el contenido de la página automáticamente — esto
+            solo se usa como contexto de apoyo junto a tus capturas o descripción.</p>
+        </div>
+
+        <div id="textFallback" class="hidden" style="margin-bottom:18px">
+          <div class="field-group">
+            <label class="field-label">O describe el sistema en texto</label>
+            <textarea class="field-input" id="textDescInput" rows="3" style="resize:none"
+              placeholder="Ej: Es un sistema tipo Trello con tableros kanban, tarjetas arrastrables y miembros por tarjeta."
+              oninput="updateCharCount(this)"></textarea>
+            <p class="field-note" id="charCount">0 / 500</p>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-back" onclick="goBackFromStep4()">Atrás</button>
+          <button class="btn-next" onclick="goStep('step-5')">Continuar <i data-lucide="arrow-right"></i></button>
+        </div>
+        <div class="progress-track" id="progressTrack-4"></div>
+      </div>
+
+      <!-- PASO 5 — Confirmar dominio del negocio -->
+      <div class="setup-step hidden" id="step-5">
+        <div class="setup-header">
+          <div class="setup-icon"><i data-lucide="building-2"></i></div>
+          <div class="setup-title" style="font-size:21px">Tipo de negocio</div>
+          <div class="setup-subtitle">Esto nos ayuda a inferir roles y módulos típicos que quizás no se ven en tus
+            capturas.</div>
+        </div>
+
+        <div id="step5ImageSummary"
+          style="background:var(--rl-surface); border:1px solid var(--rl-border); border-radius:var(--rl-radius); padding:12px 14px; margin-bottom:16px; display:none">
+          <div
+            style="font-size:9px; font-weight:700; color:var(--rl-accent); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px">
+            Contenido a analizar</div>
+          <div id="step5ImageCount" style="font-size:11px; color:var(--rl-text-secondary); line-height:1.6"></div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">¿Qué tipo de sistema es? (opcional)</label>
+          <input class="field-input" id="domainInput" placeholder="Ej: E-commerce, red social, sistema bancario...">
+          <p class="field-note">Si no estás seguro, déjalo en blanco — lo detectaremos desde tus capturas.</p>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-back" onclick="goStep('step-4')">Atrás</button>
+          <button class="btn-next" id="btnStartAnalysis" onclick="startAnalysis()"><i data-lucide="scan-search"></i>
+            Iniciar Análisis</button>
+        </div>
+        <div class="progress-track" id="progressTrack-5"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+     MAIN APP — Superficie de inspección
+     ════════════════════════════════════════════════════════════════════ -->
+  <div class="app-header">
+    <div class="brand">
+      <div class="brand-mark"><i data-lucide="scan-search" style="width:15px;height:15px"></i></div>
+      <span class="brand-name">ReqLens</span>
+      <span class="brand-version">v1.0</span>
+    </div>
+    <div class="mode-indicator">
+      <span class="mode-pill profesional" id="activeModePill">—</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="rail">
+      <div class="rail-section">
+        <div class="rail-label"><i data-lucide="info" style="width:11px;height:11px;vertical-align:middle"></i> Sesión
+          Activa</div>
+        <div style="font-size:11px; color:var(--rl-text-secondary); line-height:1.6" id="sessionInfo">Sin análisis
+          iniciado</div>
+      </div>
+      <div class="rail-section" id="sessionImagesSection" style="display:none">
+        <div class="rail-label"><i data-lucide="images" style="width:11px;height:11px;vertical-align:middle"></i>
+          Capturas Analizadas</div>
+        <div class="rail-thumb-list" id="railThumbList"></div>
+      </div>
+      <div class="rail-section" id="domainBadgeSection" style="display:none">
+        <div class="rail-label"><i data-lucide="building-2" style="width:11px;height:11px;vertical-align:middle"></i>
+          Dominio Detectado</div>
+        <div id="domainBadge" class="domain-badge">—</div>
+      </div>
+      <div class="rail-section" style="margin-top:auto; border-bottom:none">
+        <button class="rail-action-btn" id="btnNewAnalysis" onclick="resetAnalysis()">
+          <i data-lucide="rotate-ccw"></i> Nuevo análisis
+        </button>
+      </div>
+    </div>
+
+    <div class="inspection-surface-wrap"
+      style="flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; min-width:0">
+      <div class="surface-toolbar hidden" id="surfaceToolbar">
+        <div class="surface-toolbar-title"><i data-lucide="layout-grid"></i> <span id="surfaceToolbarTitle">Capturas
+            analizadas</span></div>
+        <div class="surface-toggle-group">
+          <button class="surface-toggle-btn active" id="toggleCapturas"
+            onclick="setSurfaceView('capturas')">Capturas</button>
+          <button class="surface-toggle-btn hidden" id="toggleDiagramaER" onclick="setSurfaceView('er')">Diagrama
+            ER</button>
+          <button class="surface-toggle-btn hidden" id="toggleDiagramaModulos"
+            onclick="setSurfaceView('modulos')">Diagrama de Módulos</button>
+        </div>
+      </div>
+      <div class="inspection-surface" id="inspectionSurface">
+        <div class="surface-empty" id="surfaceEmpty">
+          <i data-lucide="scan-search" style="width:32px;height:32px; opacity:0.3"></i>
+          Esperando inicio de sesión...
+        </div>
+      </div>
+    </div>
+
+    <div class="results-panel">
+      <div class="results-tabs" id="resultsTabs">
+        <button class="result-tab active" data-tab="reqs" onclick="switchResultTab('reqs')">Requerimientos</button>
+        <button class="result-tab" data-tab="modules" onclick="switchResultTab('modules')">Módulos</button>
+        <button class="result-tab" data-tab="entities" onclick="switchResultTab('entities')">Entidades</button>
+      </div>
+      <div class="results-body" id="resultsBody">
+        <div class="results-empty">
+          <i data-lucide="list-checks" style="width:24px;height:24px;opacity:0.3"></i>
+          <span>Los requerimientos aparecerán aquí tras el análisis</span>
+        </div>
+      </div>
+      <div class="results-footer" id="resultsFooter" style="display:none">
+        <button class="btn-export" onclick="exportIEEE()"><i data-lucide="file-down"></i> Exportar IEEE 830</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay de progreso del análisis -->
+  <div class="analysis-overlay hidden" id="analysisOverlay">
+    <div class="analysis-box">
+      <div class="lens-loader">
+        <div class="lens-ring lens-ring-1"></div>
+        <div class="lens-ring lens-ring-2"></div>
+        <div class="lens-ring lens-ring-3"></div>
+        <div class="lens-ring lens-ring-4"></div>
+        <div class="lens-core"></div>
+        <div class="lens-flare lens-flare-1"></div>
+        <div class="lens-flare lens-flare-2"></div>
+        <div class="lens-flare lens-flare-3"></div>
+        <div class="lens-flare lens-flare-4"></div>
+      </div>
+      <div class="analysis-status" id="analysisStatus">Iniciando análisis...</div>
+    </div>
+  </div>
+
+  <!-- Modal de discrepancia de dominio (validación cruzada) -->
+  <div class="modal-overlay hidden" id="domainConflictModal">
+    <div class="modal-box">
+      <div class="modal-icon"><i data-lucide="alert-triangle"></i></div>
+      <div class="modal-title">Verifica el tipo de sistema</div>
+      <div class="modal-text" id="domainConflictText"></div>
+      <div class="modal-actions" id="domainConflictActions"></div>
+    </div>
+  </div>
+
+  <!-- Modal de nombre para exportar IEEE 830 -->
+  <div class="modal-overlay hidden" id="exportNameModal">
+    <div class="modal-box">
+      <div class="modal-icon" style="background:var(--rl-accent-soft); color:var(--rl-accent)">
+        <i data-lucide="file-text"></i>
+      </div>
+      <div class="modal-title">Exportar IEEE 830</div>
+      <div class="modal-text">Tu nombre aparecerá en el encabezado del documento como autor del análisis.</div>
+      <div class="field-group" style="text-align:left; margin-bottom:16px">
+        <label class="field-label">Tu nombre</label>
+        <input class="field-input" id="exportNameInput" placeholder="Ej: Ana García López"
+          onkeydown="if(event.key==='Enter') confirmExport()">
+        <p class="field-note" style="margin-top:6px">Opcional — puedes dejarlo en blanco si prefieres no incluirlo.</p>
+      </div>
+      <div class="modal-actions">
+        <button onclick="confirmExport()"
+          style="background:var(--rl-accent); color:#000; border-color:var(--rl-accent)">
+          Generar documento
+        </button>
+        <button onclick="document.getElementById('exportNameModal').classList.add('hidden')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de vista previa del IEEE 830 -->
+  <div class="modal-overlay hidden" id="ieeePreviewModal">
+    <div class="modal-box" style="max-width:680px; width:100%">
+      <div class="modal-title"
+        style="text-align:left; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between">
+        <span>Vista previa — IEEE 830</span>
+        <button onclick="document.getElementById('ieeePreviewModal').classList.add('hidden')"
+          style="background:none; border:none; color:var(--rl-text-muted); cursor:pointer; font-size:18px; line-height:1">x</button>
+      </div>
+      <textarea id="ieeePreviewText" readonly style="
+      width:100%; height:340px; background:var(--rl-surface); border:1px solid var(--rl-border);
+      border-radius:var(--rl-radius); color:var(--rl-text); font-family:var(--rl-font-mono);
+      font-size:11px; line-height:1.7; padding:14px; resize:none; outline:none;
+      overflow-y:auto;"></textarea>
+      <div class="modal-actions" style="flex-direction:row; margin-top:14px">
+        <button onclick="downloadFromPreview()"
+          style="background:var(--rl-accent); color:#000; border-color:var(--rl-accent); flex:2">
+          Descargar documento
+        </button>
+        <button onclick="document.getElementById('ieeePreviewModal').classList.add('hidden')" style="flex:1">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    try { lucide.createIcons(); } catch (e) { console.warn('Lucide no disponible:', e); }
+
+    // ── ESTADO ──────────────────────────────────────────────────────────────
+    let state = {
+      apiKey: '',
+      mode: null,
+      images: [],
+      textDescription: '',
+      urlReference: '',
+      domain: ''
+    };
+    let currentStepId = 'step-0';
+    const STEP_ORDER = ['step-0', 'step-1', 'step-2', 'step-3a', 'step-4', 'step-5'];
+
+    function goStep(id) {
+      document.getElementById(currentStepId).classList.add('hidden');
+      document.getElementById(id).classList.remove('hidden');
+      currentStepId = id;
+      renderProgress(id);
+      if (id === 'step-5') updateStep5Summary();
+      try { lucide.createIcons(); } catch (e) { }
+    }
+
+    // FIX 2 + 3: actualiza el resumen de contenido en paso 5 y controla el botón
+    function updateStep5Summary() {
+      const summaryEl = document.getElementById('step5ImageSummary');
+      const countEl = document.getElementById('step5ImageCount');
+      const btnStart = document.getElementById('btnStartAnalysis');
+      const hasImages = state.images.length > 0;
+      const hasText = document.getElementById('textDescInput')?.value.trim().length > 0;
+
+      // Resumen visible solo si hay algo para mostrar
+      if (hasImages || hasText) {
+        summaryEl.style.display = 'block';
+        let lines = [];
+        if (hasImages) lines.push(`${state.images.length} captura${state.images.length > 1 ? 's' : ''} cargada${state.images.length > 1 ? 's' : ''}`);
+        if (hasText) lines.push('Descripción de texto incluida');
+        const url = document.getElementById('urlRefInput')?.value.trim();
+        if (url) lines.push(`URL de referencia: ${url}`);
+        countEl.innerHTML = lines.join('<br>');
+      } else {
+        summaryEl.style.display = 'none';
+      }
+
+      // En modo Aprendizaje las capturas son obligatorias — deshabilita si no hay
+      if (btnStart) {
+        if (state.mode === 'aprendizaje' && !hasImages) {
+          btnStart.disabled = true;
+          btnStart.title = 'Debes subir al menos una captura antes de continuar';
+        } else {
+          btnStart.disabled = false;
+          btnStart.title = '';
+        }
+      }
+    }
+
+    function renderProgress(activeId) {
+      // unifica todos los progress-track visibles en el paso actual
+      const tracks = document.querySelectorAll('.progress-track');
+      const idx = STEP_ORDER.indexOf(activeId);
+      tracks.forEach(track => {
+        track.innerHTML = STEP_ORDER.map((s, i) =>
+          `<div class="progress-dot ${i === idx ? 'active' : ''}"></div>`
+        ).join('');
+      });
+    }
+
+    function toggleKey() {
+      const inp = document.getElementById('apiKeyInput');
+      const icon = document.getElementById('eyeIcon');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+      icon.setAttribute('data-lucide', inp.type === 'password' ? 'eye' : 'eye-off');
+      try { lucide.createIcons(); } catch (e) { }
+    }
+
+    function checkStep1() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      document.getElementById('btnStep1').disabled = key.length < 20;
+    }
+
+    function selectMode(mode) {
+      state.mode = mode;
+      document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+      document.getElementById(`mode-${mode}`).classList.add('selected');
+      document.getElementById('btnStep2').disabled = false;
+    }
+
+    function proceedFromMode() {
+      // Ramificación: Aprendizaje pasa por la guía de capturas (3a), los demás van directo a 4
+      if (state.mode === 'aprendizaje') {
+        goStep('step-3a');
+      } else {
+        setupStep4ForMode();
+        goStep('step-4');
+      }
+    }
+
+    function goBackFromStep4() {
+      if (state.mode === 'aprendizaje') goStep('step-3a');
+      else goStep('step-2');
+    }
+
+    function setupStep4ForMode() {
+      const textFallback = document.getElementById('textFallback');
+      const title = document.getElementById('step4Title');
+      const subtitle = document.getElementById('step4Subtitle');
+
+      if (state.mode === 'aprendizaje') {
+        textFallback.classList.add('hidden'); // capturas obligatorias en este modo
+        title.textContent = 'Sube tus capturas';
+        subtitle.textContent = 'Máximo 5 imágenes. Se redimensionan automáticamente, no necesitas comprimirlas.';
+      } else {
+        textFallback.classList.remove('hidden'); // texto permitido en Guiado/Profesional
+        title.textContent = 'Capturas o descripción';
+        subtitle.textContent = state.mode === 'profesional'
+          ? 'Sube imágenes o describe el sistema directamente.'
+          : 'Sube imágenes si las tienes, o describe el sistema con tus palabras.';
+      }
+      renderImageGrid();
+    }
+
+    // ── MANEJO DE IMÁGENES — subida, captura de pantalla, redimensionado ────
+    const MAX_IMAGES = 5;
+    const MAX_WIDTH = 1200;
+
+    function renderImageGrid() {
+      const grid = document.getElementById('imageGrid');
+      const note = document.getElementById('imageCountNote');
+      grid.innerHTML = state.images.map((img, i) => `
+    <div class="image-thumb">
+      <img src="${img.dataUrl}" alt="Captura ${i + 1}">
+      <button class="image-thumb-remove" onclick="removeImage(${i})"><i data-lucide="x"></i></button>
+    </div>
+  `).join('');
+      note.textContent = state.images.length > 0
+        ? `${state.images.length} / ${MAX_IMAGES} imágenes`
+        : '';
+      try { lucide.createIcons(); } catch (e) { }
+      updateUploadButtonsState();
+    }
+
+    function updateUploadButtonsState() {
+      const full = state.images.length >= MAX_IMAGES;
+      document.getElementById('btnUploadFile').disabled = full;
+      document.getElementById('btnCaptureScreen').disabled = full;
+    }
+
+    function removeImage(index) {
+      state.images.splice(index, 1);
+      renderImageGrid();
+    }
+
+    // Redimensiona una imagen a un ancho máximo usando canvas, devuelve dataURL JPEG
+    function resizeImage(dataUrl, maxWidth) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxWidth) {
+            height = Math.round(height * (maxWidth / width));
+            width = maxWidth;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => resolve(dataUrl); // fallback: usa original si falla
+        img.src = dataUrl;
+      });
+    }
+
+    async function addImageFromDataUrl(dataUrl) {
+      if (state.images.length >= MAX_IMAGES) {
+        alert(`Ya tienes ${MAX_IMAGES} imágenes, el máximo permitido. Elimina alguna para agregar otra.`);
+        return;
+      }
+      const resized = await resizeImage(dataUrl, MAX_WIDTH);
+      state.images.push({ dataUrl: resized });
+      renderImageGrid();
+    }
+
+    function handleFileSelect(event) {
+      const files = Array.from(event.target.files);
+      processFiles(files);
+      event.target.value = ''; // permite volver a seleccionar el mismo archivo después
+    }
+
+    function processFiles(files) {
+      const remaining = MAX_IMAGES - state.images.length;
+      if (remaining <= 0) {
+        alert(`Ya tienes ${MAX_IMAGES} imágenes, el máximo permitido. Elimina alguna para agregar otra.`);
+        return;
+      }
+      const toProcess = files.slice(0, remaining);
+      if (files.length > remaining) {
+        alert(`Solo se agregaron ${remaining} imagen(es) — el límite es ${MAX_IMAGES} en total.`);
+      }
+      toProcess.forEach(file => {
+        if (!file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = (e) => addImageFromDataUrl(e.target.result);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Captura de pantalla / pestaña / ventana del navegador
+    // Usa <video> + canvas en lugar de ImageCapture API porque ImageCapture
+    // no esta soportado en Safari/Firefox — este metodo funciona en todos
+    // los navegadores modernos que soportan getDisplayMedia.
+    async function captureScreen() {
+      if (state.images.length >= MAX_IMAGES) {
+        alert(`Ya tienes ${MAX_IMAGES} imágenes, el máximo permitido. Elimina alguna para agregar otra.`);
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        alert('Tu navegador no soporta captura de pantalla. Usa "Subir imágenes" en su lugar.');
+        return;
+      }
+
+      let stream = null;
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'never' } });
+        const track = stream.getVideoTracks()[0];
+
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        video.muted = true;
+        await video.play();
+
+        // Espera a que el video tenga al menos un frame real con dimensiones
+        await new Promise(resolve => {
+          if (video.readyState >= 2) return resolve();
+          video.onloadeddata = () => resolve();
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+        track.stop(); // detiene la captura inmediatamente tras tomar el frame
+        await addImageFromDataUrl(dataUrl);
+      } catch (err) {
+        // El usuario cancelo el dialogo de seleccion del navegador — no es un error real
+        if (err.name !== 'NotAllowedError') {
+          console.error('Error en captura de pantalla:', err);
+          alert('No se pudo completar la captura de pantalla. Intenta de nuevo o usa "Subir imágenes".');
+        }
+      } finally {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+      }
+    }
+
+    // Drag & drop sobre la zona de subida
+    function initDropZone() {
+      const zone = document.getElementById('dropZone');
+      if (!zone) return;
+      zone.addEventListener('click', () => document.getElementById('fileInput').click());
+      zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        processFiles(Array.from(e.dataTransfer.files));
+      });
+    }
+
+    const charLimits = { aprendizaje: 300, guiado: 500, profesional: 800 };
+    function updateCharCount(el) {
+      const limit = charLimits[state.mode] || 500;
+      el.setAttribute('maxlength', limit);
+      const len = el.value.length;
+      const counter = document.getElementById('charCount');
+      counter.textContent = `${len} / ${limit}`;
+      counter.style.color = len > limit * 0.9 ? 'var(--rl-blocked)' : len > limit * 0.7 ? 'var(--rl-inferred)' : 'var(--rl-text-muted)';
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // MOTOR DE ANÁLISIS — Claude Sonnet
+    // Flujo: validación barata de imágenes → validación cruzada de dominio →
+    // análisis completo → render de requerimientos + módulos + entidades
+    // ════════════════════════════════════════════════════════════════════════
+
+    let analysisResult = null; // guarda el resultado completo para exportar después
+
+    // Etiquetas cerradas — Claude solo puede usar estas 3, nunca inventa otras
+    const TAG_INSTRUCTIONS = `Usa EXCLUSIVAMENTE estas 3 etiquetas de confianza, nunca inventes otra ni cambies su texto:
+[CONFIRMADO] — se observó directamente en las capturas o descripción proporcionada.
+[INFERIDO] — no se vio directamente, pero es estándar para este tipo de dominio de negocio.
+[NO ACCESIBLE] — el sistema requiere autenticación o permisos que impidieron ver esta funcionalidad; se infiere su existencia por lógica de negocio.`;
+
+    const ETHICS_INSTRUCTION = `Si detectas que la imagen o descripción corresponde a una marca, empresa o producto registrado conocido, genera ÚNICAMENTE requerimientos funcionales genéricos de la categoría de negocio (ej. "sistema de e-commerce" en lugar de nombrar la marca). NUNCA repliques nombres de marca, logotipos, textos de copyright ni estructura de código específica. Tu salida debe ser análoga a como un consultor de software describiría "un sistema similar a X" sin mencionar X directamente.`;
+
+    async function callClaudeReqLens(messages, system, maxTokens = 1024) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': state.apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: maxTokens,
+          system: system,
+          messages: messages
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('API Key inválida o sin permisos. Verifica que la copiaste correctamente desde console.anthropic.com y que tenga crédito disponible.');
+        }
+        if (res.status === 429) {
+          throw new Error('Límite de uso alcanzado. Espera unos segundos e intenta de nuevo, o revisa tu plan en console.anthropic.com.');
+        }
+        throw new Error(data.error?.message || `Error ${res.status} en la API de Anthropic.`);
+      }
+      const text = data.content?.[0]?.text;
+      if (!text) throw new Error('Claude no devolvió texto. Verifica tu API Key e intenta de nuevo.');
+      return text;
+    }
+
+    function dataUrlToBase64Block(dataUrl) {
+      const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (!match) return null;
+      return { type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } };
+    }
+
+    function setAnalysisStatus(text) {
+      document.getElementById('analysisStatus').textContent = text;
+    }
+
+    async function startAnalysis() {
+      state.apiKey = document.getElementById('apiKeyInput').value.trim();
+      state.domain = document.getElementById('domainInput').value.trim();
+      state.textDescription = document.getElementById('textDescInput')?.value.trim() || '';
+      state.urlReference = document.getElementById('urlRefInput')?.value.trim() || '';
+      localStorage.setItem('rl_key', btoa(state.apiKey));
+
+      if (state.images.length === 0 && !state.textDescription) {
+        alert('Necesitas subir al menos una captura o describir el sistema en texto antes de analizar.');
+        return;
+      }
+
+      document.getElementById('setupScreen').classList.add('hidden');
+      document.getElementById('activeModePill').textContent = state.mode;
+      document.getElementById('activeModePill').className = `mode-pill ${state.mode}`;
+
+      const overlay = document.getElementById('analysisOverlay');
+      overlay.classList.remove('hidden');
+
+      try {
+        // ── PASO 1 — Validación barata de imágenes (solo si hay imágenes) ──────
+        if (state.images.length > 0) {
+          setAnalysisStatus(
+            state.mode === 'aprendizaje'
+              ? 'Verificando tus capturas...'
+              : 'Procesando...'
+          );
+          const validation = await validateImages();
+          if (!validation.valid) {
+            overlay.classList.add('hidden');
+            alert(validation.message);
+            return;
+          }
+        }
+
+        // ── PASO 2 — Análisis completo (todas las imágenes juntas + texto) ─────
+        setAnalysisStatus('Analizando interfaz y generando requerimientos...');
+        const result = await runFullAnalysis();
+
+        // ── PASO 3 — Validación cruzada de dominio ──────────────────────────────
+        const conflict = checkDomainConflict(result.dominioDetectado, state.domain);
+        if (conflict.severity === 'strong') {
+          overlay.classList.add('hidden');
+          showDomainConflictModal(result, conflict);
+          return;
+        } else if (conflict.severity === 'mixed') {
+          setAnalysisStatus('Ajustando por dominio mixto detectado...');
+        }
+
+        finalizeAnalysis(result);
+
+      } catch (err) {
+        console.error('Error en el análisis:', err);
+        overlay.classList.add('hidden');
+        alert('Error durante el análisis: ' + err.message);
+      }
+    }
+
+    // Validación barata — pregunta SÍ/NO por imagen, sin gastar tokens en análisis completo
+    async function validateImages() {
+      const content = [
+        { type: 'text', text: '¿Estas imágenes muestran interfaces de software, sitios web o aplicaciones, con contenido legible y aprovechable para análisis? Responde SOLO con "SI" o "NO: [razón breve en máximo 12 palabras]".' },
+        ...state.images.map(img => dataUrlToBase64Block(img.dataUrl)).filter(Boolean)
+      ];
+      const reply = await callClaudeReqLens(
+        [{ role: 'user', content }],
+        'Eres un validador de contenido. Responde únicamente en el formato solicitado, sin explicaciones adicionales.',
+        60
+      );
+      const normalized = reply.trim().toUpperCase();
+      if (normalized.startsWith('SI')) return { valid: true };
+      return {
+        valid: false,
+        message: state.mode === 'aprendizaje'
+          ? `Estas imágenes no parecen ser capturas de un sistema de software. ${reply.replace(/^NO:?\s*/i, '')}\n\nIntenta subir una pantalla real de la aplicación que estás analizando — por ejemplo, el dashboard principal o un listado de datos.`
+          : `Imagen no válida: ${reply.replace(/^NO:?\s*/i, '')}`
+      };
+    }
+
+    // Análisis completo — una sola llamada con todas las imágenes + contexto
+    async function runFullAnalysis() {
+      const userContent = [];
+
+      let instructions = `Analiza este sistema de software y genera un levantamiento de requerimientos completo.\n\n`;
+      if (state.domain) instructions += `El usuario indica que el dominio de negocio es: "${state.domain}".\n`;
+      if (state.urlReference) instructions += `El usuario menciona como referencia esta URL (no la has visitado ni puedes hacerlo — úsala únicamente como pista del tipo de producto si el nombre del dominio te resulta familiar, nunca para inventar funcionalidades no observadas en las capturas o descripción): "${state.urlReference}".\n`;
+      instructions += `\nResponde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks) con esta estructura exacta:
+{
+  "dominioDetectado": "string corto describiendo el tipo de sistema",
+  "requerimientosFuncionales": [
+    {"id": "RF-001", "descripcion": "string", "etiqueta": "CONFIRMADO|INFERIDO|NO ACCESIBLE"}
+  ],
+  "requerimientosNoFuncionales": [
+    {"id": "RNF-001", "descripcion": "string", "categoria": "Rendimiento|Seguridad|Usabilidad|Escalabilidad", "etiqueta": "CONFIRMADO|INFERIDO|NO ACCESIBLE"}
+  ],
+  "modulos": [
+    {"nombre": "string", "descripcion": "string corto"}
+  ],
+  "relacionesModulos": [
+    {"de": "nombre de modulo", "a": "nombre de modulo"}
+  ],
+  "entidades": [
+    {"nombre": "string", "tipo": "principal|relacion", "atributos": [{"nombre": "string", "fuente": "string corto, ej: pantalla de registro, o: inferido por dominio"}]}
+  ],
+  "relacionesEntidades": [
+    {"de": "nombre entidad", "a": "nombre entidad", "cardinalidad": "1:N|N:M|1:1"}
+  ]
+}
+
+${TAG_INSTRUCTIONS}
+
+${ETHICS_INSTRUCTION}
+
+Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 3 a 5 módulos, y 2 a 4 entidades conceptuales. Sé conciso en cada descripción (máximo 20 palabras por requerimiento). El documento y todos los textos deben estar en español, sin importar el idioma de la interfaz analizada.`;
+
+      userContent.push({ type: 'text', text: instructions });
+      state.images.forEach(img => {
+        const block = dataUrlToBase64Block(img.dataUrl);
+        if (block) userContent.push(block);
+      });
+      if (state.textDescription) {
+        userContent.push({ type: 'text', text: `Descripción del sistema proporcionada por el usuario: ${state.textDescription}` });
+      }
+
+      const reply = await callClaudeReqLens(
+        [{ role: 'user', content: userContent }],
+        'Eres un analista experto en ingeniería de requerimientos de software. Respondes ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown ni backticks. Es crítico que el JSON quede completo y bien cerrado.',
+        6000
+      );
+
+      return parseAnalysisJSON(reply);
+    }
+
+    // Parser robusto — intenta JSON.parse directo, si falla extrae el bloque
+    // {...} más grande del texto (por si Claude agregó texto fuera del JSON
+    // o el modelo cortó algo al final), y si aun así falla, expone el motivo
+    // real en consola para depurar más fácil.
+    function parseAnalysisJSON(reply) {
+      const clean = reply.replace(/```json|```/g, '').trim();
+      try {
+        return JSON.parse(clean);
+      } catch (e1) {
+        // Intento 2: extraer desde la primera "{" hasta la última "}"
+        const start = clean.indexOf('{');
+        const end = clean.lastIndexOf('}');
+        if (start !== -1 && end !== -1 && end > start) {
+          try {
+            return JSON.parse(clean.slice(start, end + 1));
+          } catch (e2) {
+            console.error('Fallo el segundo intento de parseo. Respuesta cruda completa:', clean);
+            throw new Error('La respuesta del análisis llegó incompleta o mal formada. Esto puede pasar con análisis muy grandes — intenta de nuevo o reduce el número de capturas.');
+          }
+        }
+        console.error('No se encontró un bloque JSON en la respuesta. Respuesta cruda completa:', clean);
+        throw new Error('La respuesta del análisis no tuvo el formato esperado. Intenta de nuevo.');
+      }
+    }
+
+    // Validación cruzada — 3 escenarios: coincide, mixto, contradicción
+    function checkDomainConflict(detected, declared) {
+      if (!declared) return { severity: 'none' };
+      const d1 = detected.toLowerCase();
+      const d2 = declared.toLowerCase();
+      const overlap = d1.includes(d2) || d2.includes(d1);
+      if (overlap) return { severity: 'none' };
+      // Sin una taxonomía exhaustiva, tratamos cualquier no-coincidencia como
+      // conflicto fuerte y dejamos que el usuario decida — es la opción más segura.
+      return { severity: 'strong', detected, declared };
+    }
+
+    function showDomainConflictModal(result, conflict) {
+      const modal = document.getElementById('domainConflictModal');
+      const text = document.getElementById('domainConflictText');
+      const actions = document.getElementById('domainConflictActions');
+
+      text.textContent = state.mode === 'aprendizaje'
+        ? `Detectamos que tu sistema parece ser de tipo "${conflict.detected}", pero declaraste "${conflict.declared}". ¿Cuál es correcto?`
+        : `Discrepancia: "${conflict.detected}" detectado vs "${conflict.declared}" declarado.`;
+
+      const detectedEsc = conflict.detected.replace(/'/g, "\\'");
+      const declaredEsc = conflict.declared.replace(/'/g, "\\'");
+      actions.innerHTML = `
+    <button onclick="resolveDomainConflict('${detectedEsc}')">Es "${conflict.detected}"</button>
+    <button onclick="resolveDomainConflict('${declaredEsc}')">Es "${conflict.declared}"</button>
+    <button onclick="resolveDomainConflict('${detectedEsc} y ${declaredEsc}')">Es ambos</button>
+  `;
+      modal.dataset.pendingResult = JSON.stringify(result);
+      modal.classList.remove('hidden');
+      try { lucide.createIcons(); } catch (e) { }
+    }
+
+    function resolveDomainConflict(finalDomain) {
+      const modal = document.getElementById('domainConflictModal');
+      const result = JSON.parse(modal.dataset.pendingResult);
+      result.dominioDetectado = finalDomain;
+      modal.classList.add('hidden');
+      finalizeAnalysis(result);
+    }
+
+    function finalizeAnalysis(result) {
+      analysisResult = result;
+      currentSurfaceView = 'capturas';
+      document.getElementById('analysisOverlay').classList.add('hidden');
+
+      document.getElementById('sessionInfo').textContent = `Modo: ${state.mode}\nDominio: ${result.dominioDetectado}`;
+
+      if (state.images.length > 0) {
+        document.getElementById('sessionImagesSection').style.display = 'block';
+        document.getElementById('railThumbList').innerHTML = state.images.map(img => `<img src="${img.dataUrl}" loading="lazy" width="100" height="100" style="width:100%;height:100%;object-fit:cover">`).join('');
+      }
+      document.getElementById('domainBadgeSection').style.display = 'block';
+      document.getElementById('domainBadge').textContent = result.dominioDetectado;
+
+      renderInspectionSurface();
+      renderResultsTab('reqs');
+      document.getElementById('resultsFooter').style.display = 'block';
+    }
+
+    function renderInspectionSurface() {
+      const surface = document.getElementById('inspectionSurface');
+      let html = '<div class="surface-content">';
+      if (state.images.length > 0) {
+        html += '<div class="surface-images-grid">';
+        state.images.forEach(img => {
+          html += `
+        <div class="surface-image-card scan-frame">
+          <div class="scan-corner-tl"></div><div class="scan-corner-tr"></div>
+          <div class="scan-corner-bl"></div><div class="scan-corner-br"></div>
+          <img src="${img.dataUrl}">
+        </div>`;
+        });
+        html += '</div>';
+      }
+      if (state.textDescription) {
+        html += `<div class="surface-text-card"><strong style="color:var(--rl-text)">Descripción proporcionada:</strong><br>${state.textDescription}</div>`;
+      }
+      html += '</div>';
+      surface.innerHTML = html;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // DIAGRAMA ER — toggle entre capturas originales y el modelo conceptual
+    // ════════════════════════════════════════════════════════════════════════
+    let currentSurfaceView = 'capturas';
+
+    const SURFACE_TITLES = {
+      capturas: 'Capturas analizadas',
+      er: 'Modelo conceptual de entidades',
+      modulos: 'Arquitectura de módulos'
+    };
+
+    function setSurfaceView(view) {
+      currentSurfaceView = view;
+      document.getElementById('toggleCapturas').classList.toggle('active', view === 'capturas');
+      document.getElementById('toggleDiagramaER').classList.toggle('active', view === 'er');
+      document.getElementById('toggleDiagramaModulos').classList.toggle('active', view === 'modulos');
+      document.getElementById('surfaceToolbarTitle').textContent = SURFACE_TITLES[view] || '';
+
+      if (view === 'capturas') renderInspectionSurface();
+      else if (view === 'er') renderERDiagram();
+      else if (view === 'modulos') renderModuleDiagram();
+    }
+
+    function renderERDiagram() {
+      const surface = document.getElementById('inspectionSurface');
+      const entidades = analysisResult?.entidades || [];
+      const relaciones = analysisResult?.relacionesEntidades || [];
+
+      if (entidades.length === 0) {
+        surface.innerHTML = '<div class="er-empty-note">No se detectaron entidades conceptuales en este análisis.</div>';
+        return;
+      }
+
+      let html = '<div class="er-diagram-wrap"><div class="er-canvas" id="erCanvas">';
+      entidades.forEach((e, i) => {
+        const safeId = `er-ent-${i}`;
+        const isSecondary = e.tipo === 'relacion';
+        html += `
+      <div class="er-entity" id="${safeId}">
+        <div class="er-entity-header ${isSecondary ? 'secondary' : ''}">
+          <span class="er-entity-name" title="${escapeHtml(e.nombre)}">${escapeHtml(e.nombre)}</span>
+          <span class="er-entity-tag ${isSecondary ? 'secondary' : ''}">${isSecondary ? 'Relación' : 'Entidad'}</span>
+        </div>
+        <div class="er-entity-body">
+          ${(e.atributos || []).map(a => `
+            <div class="er-attribute">
+              <span class="er-attr-icon">·</span>
+              <span class="er-attr-name" title="${escapeHtml(a.nombre)}">${escapeHtml(a.nombre)}</span>
+              <span class="er-attr-source" title="${escapeHtml(a.fuente)}">${escapeHtml(a.fuente)}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+      });
+      html += '<svg class="er-connections" id="erConnections"></svg>';
+      html += '</div></div>';
+      surface.innerHTML = html;
+
+      // Espera al siguiente frame para que el layout ya tenga posiciones reales
+      // antes de calcular las coordenadas de las líneas conectoras.
+      requestAnimationFrame(() => requestAnimationFrame(() => drawERConnections(entidades, relaciones)));
+    }
+
+    function drawERConnections(entidades, relaciones) {
+      const svg = document.getElementById('erConnections');
+      const canvas = document.getElementById('erCanvas');
+      if (!svg || !canvas) return;
+      const canvasRect = canvas.getBoundingClientRect();
+      svg.innerHTML = '';
+
+      const nameToIndex = {};
+      entidades.forEach((e, i) => { nameToIndex[e.nombre] = i; });
+
+      relaciones.forEach(rel => {
+        const fromIdx = nameToIndex[rel.de];
+        const toIdx = nameToIndex[rel.a];
+        if (fromIdx === undefined || toIdx === undefined) return;
+
+        const fromEl = document.getElementById(`er-ent-${fromIdx}`);
+        const toEl = document.getElementById(`er-ent-${toIdx}`);
+        if (!fromEl || !toEl) return;
+
+        const fromRect = fromEl.getBoundingClientRect();
+        const toRect = toEl.getBoundingClientRect();
+
+        const x1 = fromRect.left - canvasRect.left + fromRect.width / 2;
+        const y1 = fromRect.bottom - canvasRect.top;
+        const x2 = toRect.left - canvasRect.left + toRect.width / 2;
+        const y2 = toRect.top - canvasRect.top;
+        const midY = (y1 + y2) / 2;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
+        svg.appendChild(path);
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', x2);
+        circle.setAttribute('cy', y2);
+        circle.setAttribute('r', 3);
+        svg.appendChild(circle);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', (x1 + x2) / 2 + 6);
+        text.setAttribute('y', midY);
+        text.textContent = rel.cardinalidad || '';
+        svg.appendChild(text);
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // Íconos rotativos para los bloques de módulo — da variedad visual sin
+    // depender de que Claude elija un ícono (lo cual no es confiable pedirle).
+    const MODULE_ICONS = ['box', 'layers', 'database', 'shield', 'users', 'bell', 'settings', 'credit-card', 'search', 'mail'];
+
+    function renderModuleDiagram() {
+      const surface = document.getElementById('inspectionSurface');
+      const modulos = analysisResult?.modulos || [];
+      const relaciones = analysisResult?.relacionesModulos || [];
+
+      if (modulos.length === 0) {
+        surface.innerHTML = '<div class="mod-empty-note">No se detectaron módulos en este análisis.</div>';
+        return;
+      }
+
+      let html = '<div class="mod-diagram-wrap"><div class="mod-canvas" id="modCanvas">';
+      modulos.forEach((m, i) => {
+        const icon = MODULE_ICONS[i % MODULE_ICONS.length];
+        html += `
+      <div class="mod-block" id="mod-blk-${i}">
+        <div class="mod-block-icon"><i data-lucide="${icon}"></i></div>
+        <div class="mod-block-name" title="${escapeHtml(m.nombre)}">${escapeHtml(m.nombre)}</div>
+        <div class="mod-block-desc">${escapeHtml(m.descripcion)}</div>
+      </div>`;
+      });
+      html += '<svg class="mod-connections" id="modConnections"></svg>';
+      html += '</div></div>';
+      surface.innerHTML = html;
+      try { lucide.createIcons(); } catch (e) { }
+
+      requestAnimationFrame(() => requestAnimationFrame(() => drawModuleConnections(modulos, relaciones)));
+    }
+
+    function drawModuleConnections(modulos, relaciones) {
+      const svg = document.getElementById('modConnections');
+      const canvas = document.getElementById('modCanvas');
+      if (!svg || !canvas) return;
+      const canvasRect = canvas.getBoundingClientRect();
+      svg.innerHTML = `
+    <defs>
+      <marker id="modArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path class="mod-arrowhead" d="M0,0 L6,3 L0,6 Z"></path>
+      </marker>
+    </defs>`;
+
+      const nameToIndex = {};
+      modulos.forEach((m, i) => { nameToIndex[m.nombre] = i; });
+
+      relaciones.forEach(rel => {
+        const fromIdx = nameToIndex[rel.de];
+        const toIdx = nameToIndex[rel.a];
+        if (fromIdx === undefined || toIdx === undefined || fromIdx === toIdx) return;
+
+        const fromEl = document.getElementById(`mod-blk-${fromIdx}`);
+        const toEl = document.getElementById(`mod-blk-${toIdx}`);
+        if (!fromEl || !toEl) return;
+
+        const fromRect = fromEl.getBoundingClientRect();
+        const toRect = toEl.getBoundingClientRect();
+
+        const x1 = fromRect.left - canvasRect.left + fromRect.width / 2;
+        const y1 = fromRect.top - canvasRect.top + fromRect.height / 2;
+        const x2 = toRect.left - canvasRect.left + toRect.width / 2;
+        const y2 = toRect.top - canvasRect.top + toRect.height / 2;
+
+        // Acorta la línea para que la punta de flecha no quede oculta bajo la tarjeta destino
+        const dx = x2 - x1, dy = y2 - y1;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const shrink = 105; // aprox. mitad del ancho de tarjeta + margen
+        const ex = x2 - (dx / dist) * shrink;
+        const ey = y2 - (dy / dist) * shrink;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M ${x1} ${y1} L ${ex} ${ey}`);
+        path.setAttribute('marker-end', 'url(#modArrow)');
+        svg.appendChild(path);
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      if (!analysisResult) return;
+      if (currentSurfaceView === 'er') drawERConnections(analysisResult.entidades || [], analysisResult.relacionesEntidades || []);
+      if (currentSurfaceView === 'modulos') drawModuleConnections(analysisResult.modulos || [], analysisResult.relacionesModulos || []);
+    });
+
+    function switchResultTab(tab) {
+      document.querySelectorAll('.result-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+      renderResultsTab(tab);
+    }
+
+    function renderResultsTab(tab) {
+      if (!analysisResult) return;
+      const body = document.getElementById('resultsBody');
+
+      if (tab === 'reqs') {
+        let html = '<div class="req-section-label">Requerimientos Funcionales</div>';
+        analysisResult.requerimientosFuncionales.forEach(r => {
+          html += renderReqCard(r.id, r.descripcion, r.etiqueta);
+        });
+        html += '<div class="req-section-label">Requerimientos No Funcionales</div>';
+        analysisResult.requerimientosNoFuncionales.forEach(r => {
+          html += renderReqCard(r.id, `[${r.categoria}] ${r.descripcion}`, r.etiqueta);
+        });
+        body.innerHTML = html;
+      }
+
+      if (tab === 'modules') {
+        let html = '<div class="req-section-label">Módulos del Sistema</div>';
+        analysisResult.modulos.forEach(m => {
+          html += `<div class="module-block"><strong>${m.nombre}</strong><br>${m.descripcion}</div>`;
+        });
+        body.innerHTML = html;
+        document.getElementById('toggleDiagramaER').classList.add('hidden');
+        document.getElementById('toggleDiagramaModulos').classList.remove('hidden');
+        document.getElementById('surfaceToolbar').classList.remove('hidden');
+        setSurfaceView('modulos');
+        return;
+      }
+
+      if (tab === 'entities') {
+        let html = '<div class="req-section-label">Entidades Conceptuales</div>';
+        analysisResult.entidades.forEach(e => {
+          html += `<div class="module-block"><strong>${e.nombre}</strong> <span style="color:var(--rl-text-muted); font-size:10px">(${e.tipo})</span><br>`;
+          html += e.atributos.map(a => `· ${a.nombre} <span style="color:var(--rl-text-muted); font-style:italic">— ${a.fuente}</span>`).join('<br>');
+          html += '</div>';
+        });
+        body.innerHTML = html;
+        document.getElementById('toggleDiagramaModulos').classList.add('hidden');
+        document.getElementById('toggleDiagramaER').classList.remove('hidden');
+        document.getElementById('surfaceToolbar').classList.remove('hidden');
+        setSurfaceView('er');
+        return;
+      }
+
+      document.getElementById('surfaceToolbar').classList.add('hidden');
+    }
+
+    function renderReqCard(id, desc, tag) {
+      const tagClass = tag === 'CONFIRMADO' ? 'confirmado' : tag === 'INFERIDO' ? 'inferido' : 'no-accesible';
+      return `
+    <div class="req-card">
+      <div class="req-card-head">
+        <span class="req-card-id">${id}</span>
+        <span class="confidence-tag ${tagClass}">${tag}</span>
+      </div>
+      <div class="req-card-desc">${desc}</div>
+    </div>`;
+    }
+
+    function resetAnalysis() {
+      if (!confirm('¿Iniciar un nuevo análisis? Se perderá el resultado actual.')) return;
+      location.reload();
+    }
+
+    // ── EXPORTACIÓN — genera el documento IEEE 830 completo ────────────────────
+    function exportIEEE() {
+      if (!analysisResult) return;
+      // Limpia el campo de nombre y abre el modal — el nombre es opcional
+      const input = document.getElementById('exportNameInput');
+      input.value = '';
+      document.getElementById('exportNameModal').classList.remove('hidden');
+      // Foco automático para que el usuario pueda escribir sin hacer clic
+      setTimeout(() => input.focus(), 100);
+      try { lucide.createIcons(); } catch (e) { }
+    }
+
+    async function confirmExport() {
+      const authorName = document.getElementById('exportNameInput').value.trim();
+      document.getElementById('exportNameModal').classList.add('hidden');
+
+      const overlay = document.getElementById('analysisOverlay');
+      overlay.classList.remove('hidden');
+      setAnalysisStatus('Generando documento IEEE 830...');
+
+      // Construye la línea de autoría — solo aparece si el usuario puso su nombre
+      const authorLine = authorName
+        ? `Elaborado por: ${authorName}`
+        : '';
+
+      const fecha = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      try {
+        const summary = JSON.stringify(analysisResult, null, 2);
+        const prompt = `Con base en este análisis ya realizado, genera el documento IEEE 830 completo en español, en texto plano bien formateado (sin markdown):
+
+${summary}
+
+Estructura:
+1. Introducción (propósito, alcance, definiciones)
+2. Descripción General (perspectiva del producto, funciones, usuarios, restricciones)
+3. Requisitos Funcionales (usa los RF ya generados, con su etiqueta de confianza)
+4. Requisitos No Funcionales (usa los RNF ya generados)
+5. Diagrama de módulos en formato Mermaid (graph TD)
+
+${TAG_INSTRUCTIONS}
+
+Al inicio del documento, justo después del título principal, incluye este encabezado de identificación:
+"Fecha: ${fecha}${authorLine ? '\n' + authorLine : ''}
+Sistema analizado: ${analysisResult.dominioDetectado}
+Herramienta: ReqLens v1.0"
+
+Al final del documento agrega EXACTAMENTE este pie de página:
+"─────────────────────────────────────
+Este documento fue generado con fines educativos mediante análisis de interfaz pública. No representa especificaciones oficiales del sistema analizado ni debe usarse para fines comerciales o de replicación de producto.
+Generado con ReqLens — ${fecha}${authorLine ? '\n' + authorLine : ''}
+─────────────────────────────────────"`;
+
+        const doc = await callClaudeReqLens(
+          [{ role: 'user', content: prompt }],
+          'Eres un experto en documentación IEEE 830. Genera documentos formales, precisos y bien estructurados en español.',
+          4000
+        );
+
+        overlay.classList.add('hidden');
+
+        // Guarda el doc y el nombre de archivo para que downloadFromPreview los use
+        const safeAuthor = authorName
+          ? `_${authorName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚñÑ]/g, '')}`
+          : '';
+        window._ieeeDoc = doc;
+        window._ieeeFilename = `ReqLens_IEEE830${safeAuthor}.txt`;
+
+        // Muestra la vista previa antes de descargar
+        document.getElementById('ieeePreviewText').value = doc;
+        document.getElementById('ieeePreviewModal').classList.remove('hidden');
+
+      } catch (err) {
+        overlay.classList.add('hidden');
+        alert('Error al generar el documento: ' + err.message);
+      }
+    }
+
+    function downloadFromPreview() {
+      if (window._ieeeDoc && window._ieeeFilename) {
+        downloadTextFile(window._ieeeDoc, window._ieeeFilename);
+        document.getElementById('ieeePreviewModal').classList.add('hidden');
+      }
+    }
+
+    function downloadTextFile(text, filename) {
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Init
+    window.addEventListener('DOMContentLoaded', () => {
+      renderProgress('step-0');
+      initDropZone();
+      const saved = localStorage.getItem('rl_key');
+      if (saved) {
+        try { document.getElementById('apiKeyInput').value = atob(saved); checkStep1(); } catch (e) { }
+      }
+    });
+  </script>
+</body>
+
+</html>
