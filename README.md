@@ -71,7 +71,7 @@ reqlens/
 
 ### Tecnologías Utilizadas
 -   **Lucide Icons:** Sistema de iconografía limpio de alta resolución.
--   **Google Fonts:** Fuentes *Space Grotesk* (títulos) y *JetBrains Mono* (código y metadatos).
+-   **Google Fonts:** Fuentes *Outfit* (títulos), *Inter* (cuerpo de texto) y *JetBrains Mono* (código e identificadores).
 -   **Anthropic API:** Claude Sonnet como motor inteligente de inferencia y traducción.
 
 ---

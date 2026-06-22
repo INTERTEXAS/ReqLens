@@ -34,7 +34,8 @@
   --rl-text-secondary: #9ca3af;
   --rl-text-muted: #6b7280;
 
-  --rl-font-display: 'Space Grotesk', sans-serif;
+  --rl-font-display: 'Outfit', sans-serif;
+  --rl-font-body: 'Inter', sans-serif;
   --rl-font-mono: 'JetBrains Mono', monospace;
 
   /* — Geometría Premium — */
@@ -73,7 +74,7 @@
 }
 
 body {
-  font-family: var(--rl-font-mono);
+  font-family: var(--rl-font-body);
   background: var(--rl-bg);
   color: var(--rl-text);
   height: 100vh;
