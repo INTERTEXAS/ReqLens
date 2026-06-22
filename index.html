@@ -1209,58 +1209,53 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
       const handleEl = type === 'er' ? cardEl.querySelector('.er-entity-header') : cardEl;
       if (!handleEl) return;
 
-      let isDragging = false;
-      let startX = 0;
-      let startY = 0;
-      let initX = 0;
-      let initY = 0;
-
       const offsets = type === 'er' ? erDragOffsets : modDragOffsets;
 
       handleEl.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
+        
+        // Evitar selección de texto por defecto
         e.preventDefault();
-        isDragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
+        
+        const startX = e.clientX;
+        const startY = e.clientY;
 
         const currentOffset = offsets[name] || { x: 0, y: 0 };
-        initX = currentOffset.x;
-        initY = currentOffset.y;
+        const initX = currentOffset.x;
+        const initY = currentOffset.y;
 
         cardEl.classList.add('is-dragging');
-        handleEl.setPointerCapture(e.pointerId);
+
+        const onPointerMove = (moveEvt) => {
+          const dx = moveEvt.clientX - startX;
+          const dy = moveEvt.clientY - startY;
+
+          const offsetX = initX + dx;
+          const offsetY = initY + dy;
+
+          offsets[name] = { x: offsetX, y: offsetY };
+
+          cardEl.style.setProperty('--drag-x', `${offsetX}px`);
+          cardEl.style.setProperty('--drag-y', `${offsetY}px`);
+
+          if (type === 'er') {
+            drawERConnections(analysisResult.entidades || [], analysisResult.relacionesEntidades || []);
+          } else {
+            drawModuleConnections(analysisResult.modulos || [], analysisResult.relacionesModulos || []);
+          }
+        };
+
+        const onPointerUp = () => {
+          cardEl.classList.remove('is-dragging');
+          window.removeEventListener('pointermove', onPointerMove);
+          window.removeEventListener('pointerup', onPointerUp);
+          window.removeEventListener('pointercancel', onPointerUp);
+        };
+
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
       });
-
-      handleEl.addEventListener('pointermove', (e) => {
-        if (!isDragging) return;
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-
-        const offsetX = initX + dx;
-        const offsetY = initY + dy;
-
-        offsets[name] = { x: offsetX, y: offsetY };
-
-        cardEl.style.setProperty('--drag-x', `${offsetX}px`);
-        cardEl.style.setProperty('--drag-y', `${offsetY}px`);
-
-        if (type === 'er') {
-          drawERConnections(analysisResult.entidades || [], analysisResult.relacionesEntidades || []);
-        } else {
-          drawModuleConnections(analysisResult.modulos || [], analysisResult.relacionesModulos || []);
-        }
-      });
-
-      const stopDrag = (e) => {
-        if (!isDragging) return;
-        isDragging = false;
-        cardEl.classList.remove('is-dragging');
-        try { handleEl.releasePointerCapture(e.pointerId); } catch (err) {}
-      };
-
-      handleEl.addEventListener('pointerup', stopDrag);
-      handleEl.addEventListener('pointercancel', stopDrag);
     }
 
     function resetERLayout() {

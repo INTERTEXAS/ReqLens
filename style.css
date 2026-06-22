@@ -1851,10 +1851,12 @@ body {
 /* Drag and Reset Layout Utility Styles */
 .er-entity-header {
   cursor: grab;
+  touch-action: none;
 }
 
 .mod-block {
   cursor: grab;
+  touch-action: none;
 }
 
 .er-entity.is-dragging,
