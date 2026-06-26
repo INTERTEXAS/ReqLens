@@ -22,6 +22,11 @@
      SETUP SCREEN — Onboarding ramificado
      ════════════════════════════════════════════════════════════════════ -->
   <div class="setup-screen" id="setupScreen">
+    <div style="position: absolute; top: 16px; right: 24px; z-index: 105;">
+      <button class="theme-toggle-btn" id="themeToggleBtnSetup" onclick="toggleTheme()" title="Cambiar tema">
+        <i data-lucide="sun"></i>
+      </button>
+    </div>
     <div class="setup-container">
 
       <!-- PASO 0 — Bienvenida + Disclaimer -->
@@ -323,7 +328,10 @@
       <span class="brand-name">ReqLens</span>
       <span class="brand-version">v1.0</span>
     </div>
-    <div class="mode-indicator">
+    <div class="mode-indicator" style="display:flex; align-items:center; gap:8px">
+      <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Cambiar tema">
+        <i data-lucide="sun"></i>
+      </button>
       <span class="mode-pill profesional" id="activeModePill">—</span>
     </div>
   </div>
@@ -380,6 +388,7 @@
         <button class="result-tab active" data-tab="reqs" onclick="switchResultTab('reqs')">Requerimientos</button>
         <button class="result-tab" data-tab="modules" onclick="switchResultTab('modules')">Módulos</button>
         <button class="result-tab" data-tab="entities" onclick="switchResultTab('entities')">Entidades</button>
+        <button class="result-tab" data-tab="chat" onclick="switchResultTab('chat')">Chat IA</button>
       </div>
       <div class="results-body" id="resultsBody">
         <div class="results-empty">
@@ -389,6 +398,10 @@
       </div>
       <div class="results-footer" id="resultsFooter" style="display:none">
         <button class="btn-export" onclick="exportIEEE()"><i data-lucide="file-down"></i> Exportar IEEE 830</button>
+      </div>
+      <div class="chat-input-area hidden" id="chatInputArea">
+        <textarea id="chatInput" placeholder="Pregúntale a Claude sobre Scrum, DoD, Historias..." rows="1" onkeydown="handleChatKeyDown(event)"></textarea>
+        <button id="btnSendChat" onclick="sendChatMessage()"><i data-lucide="send"></i></button>
       </div>
     </div>
   </div>
@@ -474,6 +487,9 @@
   <script>
     try { lucide.createIcons(); } catch (e) { console.warn('Lucide no disponible:', e); }
 
+    // Inicializar tema antes de pintar nada
+    initTheme();
+
     // ── ESTADO ──────────────────────────────────────────────────────────────
     let state = {
       apiKey: '',
@@ -481,7 +497,9 @@
       images: [],
       textDescription: '',
       urlReference: '',
-      domain: ''
+      domain: '',
+      chatHistory: [],
+      isChatLoading: false
     };
     let currentStepId = 'step-0';
     const STEP_ORDER = ['step-0', 'step-1', 'step-2', 'step-3a', 'step-4', 'step-5'];
@@ -1457,6 +1475,20 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
 
     function switchResultTab(tab) {
       document.querySelectorAll('.result-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+      
+      const resultsFooter = document.getElementById('resultsFooter');
+      const chatInputArea = document.getElementById('chatInputArea');
+      
+      if (tab === 'chat') {
+        resultsFooter.style.display = 'none';
+        chatInputArea.classList.remove('hidden');
+      } else {
+        if (analysisResult) {
+          resultsFooter.style.display = 'block';
+        }
+        chatInputArea.classList.add('hidden');
+      }
+      
       renderResultsTab(tab);
     }
 
@@ -1504,6 +1536,12 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
         return;
       }
 
+      if (tab === 'chat') {
+        document.getElementById('surfaceToolbar').classList.add('hidden');
+        renderChat();
+        return;
+      }
+
       document.getElementById('surfaceToolbar').classList.add('hidden');
     }
 
@@ -1517,6 +1555,281 @@ Genera mínimo 6 y máximo 10 requerimientos funcionales, 3 a 5 no funcionales, 
       </div>
       <div class="req-card-desc">${desc}</div>
     </div>`;
+    }
+
+    // ── INTERFAZ DE CHAT DE SCRUM ──────────────────────────────────────────────
+    function renderChat() {
+      const body = document.getElementById('resultsBody');
+      
+      let html = `
+        <div class="chat-messages-wrap">
+          <div class="suggestion-pills-container">
+            <div class="suggestion-title">Tareas de Scrum sugeridas</div>
+            <div class="suggestion-pills">
+              <button class="suggestion-pill" onclick="sendSuggestionPrompt('Generar el Product Backlog de Scrum con estimaciones en Story Points para todos los requerimientos')">Backlog de Scrum</button>
+              <button class="suggestion-pill" onclick="sendSuggestionPrompt('Crear Historias de Usuario formales con criterios de aceptación en Gherkin para los requerimientos funcionales principales')">Historias de Usuario</button>
+              <button class="suggestion-pill" onclick="sendSuggestionPrompt('Definir el Definition of Done (DoD) completo y adaptado para este tipo de proyecto')">Definition of Done (DoD)</button>
+              <button class="suggestion-pill" onclick="sendSuggestionPrompt('Establecer las Políticas, Reglas de Negocio y Restricciones técnicas claves')">Políticas y Restricciones</button>
+              <button class="suggestion-pill" onclick="sendSuggestionPrompt('Adaptar la plantilla del SRS IEEE 830 para que encaje perfectamente con proyectos Scrum (IEEE 830 adaptado a Scrum)')">SRS adaptado a Scrum</button>
+            </div>
+          </div>
+          <div id="chatMessages" style="display:flex; flex-direction:column; gap:12px; flex:1; min-height:0;">
+      `;
+      
+      if (state.chatHistory.length === 0) {
+        html += `
+          <div class="chat-message assistant">
+            <div class="chat-message-meta">
+              <span>Asistente Scrum</span>
+              <span>ReqLens AI</span>
+            </div>
+            <div class="chat-message-text">
+              <p>¡Hola! Soy tu asistente de Scrum e Ingeniería de Requerimientos.</p>
+              <p>He analizado la interfaz y tengo listos los requerimientos funcionales, no funcionales y el modelo conceptual. ¿Cómo te gustaría refinarlos o transformarlos en artefactos ágiles hoy?</p>
+              <p>Puedes usar los botones de arriba para tareas rápidas o escribirme directamente.</p>
+            </div>
+          </div>
+        `;
+      } else {
+        state.chatHistory.forEach((msg, idx) => {
+          const isAssistant = msg.role === 'assistant';
+          const metaName = isAssistant ? 'Asistente Scrum' : 'Tú';
+          const metaSub = isAssistant ? 'ReqLens AI' : 'Analista';
+          const formattedText = formatChatMessageText(msg.content);
+          
+          html += `
+            <div class="chat-message ${msg.role}">
+              <div class="chat-message-meta">
+                <span>${metaName}</span>
+                <span>${metaSub}</span>
+              </div>
+              <div class="chat-message-text">${formattedText}</div>
+              ${isAssistant ? `
+                <div class="chat-actions">
+                  <button class="btn-chat-copy" onclick="copyChatMessage(this, ${idx})">
+                    <i data-lucide="copy"></i> Copiar
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        });
+      }
+      
+      if (state.isChatLoading) {
+        html += `
+          <div class="chat-message assistant" id="chatLoadingIndicator">
+            <div class="chat-message-meta">
+              <span>Asistente Scrum</span>
+              <span>Pensando...</span>
+            </div>
+            <div class="chat-loading">
+              <span>Claude está generando los artefactos</span>
+              <div class="chat-dot-wrap">
+                <div class="chat-dot"></div>
+                <div class="chat-dot"></div>
+                <div class="chat-dot"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      html += `
+          </div>
+        </div>
+      `;
+      
+      body.innerHTML = html;
+      try { lucide.createIcons(); } catch (e) {}
+      
+      setTimeout(() => {
+        body.scrollTop = body.scrollHeight;
+      }, 50);
+    }
+
+    function formatChatMessageText(text) {
+      if (!text) return '';
+      
+      let html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      
+      html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        return `<pre><code class="language-${lang || 'txt'}">${code.trim()}</code></pre>`;
+      });
+      
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+      
+      const lines = html.split('\n');
+      let inTable = false;
+      let tableHtml = '';
+      let processedLines = [];
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('|') && line.endsWith('|')) {
+          const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+          
+          if (!inTable) {
+            inTable = true;
+            tableHtml = '<table><thead><tr>';
+            cells.forEach(c => tableHtml += `<th>${c}</th>`);
+            tableHtml += '</tr></thead><tbody>';
+          } else {
+            if (line.includes('---') || line.includes('-:-')) {
+              continue;
+            }
+            tableHtml += '<tr>';
+            cells.forEach(c => tableHtml += `<td>${c}</td>`);
+            tableHtml += '</tr>';
+          }
+        } else {
+          if (inTable) {
+            inTable = false;
+            tableHtml += '</tbody></table>';
+            processedLines.push(tableHtml);
+            tableHtml = '';
+          }
+          processedLines.push(lines[i]);
+        }
+      }
+      if (inTable) {
+        tableHtml += '</tbody></table>';
+        processedLines.push(tableHtml);
+      }
+      
+      html = processedLines.join('\n');
+      
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      
+      html = html.replace(/^### (.*)$/gm, '<h4 style="color:var(--rl-accent-hover); margin: 12px 0 6px; font-size:12px; font-family:var(--rl-font-display); font-weight:600;">$1</h4>');
+      html = html.replace(/^## (.*)$/gm, '<h3 style="color:var(--rl-accent); margin: 14px 0 8px; font-size:13px; font-family:var(--rl-font-display); font-weight:600;">$1</h3>');
+      html = html.replace(/^# (.*)$/gm, '<h2 style="color:var(--rl-text); margin: 16px 0 10px; font-size:14px; font-family:var(--rl-font-display); font-weight:700;">$1</h2>');
+
+      html = html.replace(/^\s*[-*]\s+(.*)$/gm, '<li>$1</li>');
+      html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+      html = html.replace(/<\/ul>\n<ul>/g, '\n');
+
+      html = html.replace(/^\s*(\d+)\.\s+(.*)$/gm, '<li class="ordered-list-item">$2</li>');
+      html = html.replace(/((?:<li class="ordered-list-item">.*<\/li>\s*)+)/gs, '<ol>$1</ol>');
+      html = html.replace(/class="ordered-list-item"/g, '');
+      html = html.replace(/<\/ol>\n<ol>/g, '\n');
+      
+      const blocks = html.split(/\n\n+/);
+      html = blocks.map(block => {
+        const trimmed = block.trim();
+        if (!trimmed) return '';
+        if (trimmed.startsWith('<pre>') || trimmed.startsWith('<table>') || trimmed.startsWith('<ul>') || trimmed.startsWith('<ol>') || trimmed.startsWith('<h') || trimmed.startsWith('<li>')) {
+          return trimmed;
+        }
+        return `<p>${trimmed.replace(/\n/g, '<br>')}</p>`;
+      }).join('\n');
+      
+      return html;
+    }
+
+    function handleChatKeyDown(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendChatMessage();
+      }
+    }
+
+    async function sendSuggestionPrompt(promptText) {
+      const inputEl = document.getElementById('chatInput');
+      inputEl.value = promptText;
+      await sendChatMessage();
+    }
+
+    async function sendChatMessage() {
+      if (state.isChatLoading) return;
+      
+      const inputEl = document.getElementById('chatInput');
+      const text = inputEl.value.trim();
+      if (!text) return;
+      
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+      
+      state.chatHistory.push({ role: 'user', content: text });
+      state.isChatLoading = true;
+      
+      renderChat();
+      
+      try {
+        const systemPrompt = `Eres el asistente Scrum de ReqLens, un consultor experto en ingeniería de requerimientos, metodologías ágiles y marcos de trabajo ágiles (Scrum).
+El usuario ha analizado visualmente una interfaz de software y ha generado una especificación conceptual en formato JSON:
+${JSON.stringify(analysisResult, null, 2)}
+
+Tu objetivo es guiar al usuario para refinar estos requerimientos y hacer la transición desde la especificación IEEE 830 (SRS) hacia los artefactos de Scrum. Debes ser capaz de:
+1. Diseñar el Product Backlog de Scrum ordenado y priorizado, con estimaciones conceptuales (ej. Story Points con secuencia de Fibonacci).
+2. Crear Historias de Usuario claras con criterios de aceptación funcionales usando el formato Gherkin (Dado/Cuando/Entonces).
+3. Definir la Definición de Terminado (Definition of Done - DoD) adaptada al tipo de producto para asegurar alta calidad.
+4. Establecer políticas de desarrollo, reglas de negocio y restricciones técnicas.
+5. Proporcionar la estructura o plantilla adaptada del SRS en proyectos Scrum (unificando la especificación formal IEEE 830 con historias y backlog, denominado IEEE 830 adaptado a Scrum).
+
+Responde siempre en español, de forma muy estructurada y profesional. Usa formato Markdown con negritas, listas y tablas claras para presentar la información de manera premium. Sé directo y de alto valor técnico.`;
+
+        const messages = state.chatHistory.map(h => ({ role: h.role, content: h.content }));
+        const reply = await callClaudeReqLens(messages, systemPrompt, 4000);
+        
+        state.chatHistory.push({ role: 'assistant', content: reply });
+      } catch (err) {
+        console.error('Error en el chat:', err);
+        state.chatHistory.push({ 
+          role: 'assistant', 
+          content: `**Error al conectar con el asistente de IA**: ${err.message}. Asegúrate de tener tu API Key configurada correctamente y conexión a Internet.`
+        });
+      } finally {
+        state.isChatLoading = false;
+        renderChat();
+      }
+    }
+
+    function copyChatMessage(buttonEl, index) {
+      const msg = state.chatHistory[index];
+      if (!msg) return;
+      
+      navigator.clipboard.writeText(msg.content).then(() => {
+        const originalHTML = buttonEl.innerHTML;
+        buttonEl.innerHTML = '<i data-lucide="check" style="color:var(--rl-confirmed)"></i> ¡Copiado!';
+        try { lucide.createIcons(); } catch(e) {}
+        setTimeout(() => {
+          buttonEl.innerHTML = originalHTML;
+          try { lucide.createIcons(); } catch(e) {}
+        }, 1500);
+      }).catch(err => {
+        console.error('Error al copiar:', err);
+      });
+    }
+
+    // ── GESTIÓN DE TEMAS (CLARO / OSCURO) ──────────────────────────────────────
+    function initTheme() {
+      const savedTheme = localStorage.getItem('rl_theme') || 'dark';
+      if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+        setTimeout(() => updateThemeIcon(true), 50);
+      } else {
+        document.body.classList.remove('light-theme');
+        setTimeout(() => updateThemeIcon(false), 50);
+      }
+    }
+
+    function toggleTheme() {
+      const isLight = document.body.classList.toggle('light-theme');
+      localStorage.setItem('rl_theme', isLight ? 'light' : 'dark');
+      updateThemeIcon(isLight);
+    }
+
+    function updateThemeIcon(isLight) {
+      const btn = document.getElementById('themeToggleBtn');
+      const btnSetup = document.getElementById('themeToggleBtnSetup');
+      const iconHTML = isLight ? '<i data-lucide="moon"></i>' : '<i data-lucide="sun"></i>';
+      if (btn) btn.innerHTML = iconHTML;
+      if (btnSetup) btnSetup.innerHTML = iconHTML;
+      try { lucide.createIcons(); } catch (e) {}
     }
 
     function resetAnalysis() {
